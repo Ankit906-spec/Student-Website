@@ -1,7 +1,7 @@
-// Change this when you deploy backend
+// ====== CONFIG ======
 const API_BASE = "https://student-website-1-mx8v.onrender.com";
 
-
+// ====== SESSION HELPERS ======
 function getToken() {
   return localStorage.getItem("token");
 }
@@ -18,20 +18,23 @@ function clearSession() {
   localStorage.removeItem("user");
 }
 
-// Generic API helper
+// ====== GENERIC API HELPER ======
 async function api(path, options = {}) {
   const token = getToken();
-  const headers = options.headers || {};
+  const headers = options.headers ? { ...options.headers } : {};
+
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
   if (token) {
     headers["Authorization"] = "Bearer " + token;
   }
+
   const res = await fetch(API_BASE + path, {
     ...options,
     headers
   });
+
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Request failed");
@@ -39,7 +42,7 @@ async function api(path, options = {}) {
   return res.json().catch(() => ({}));
 }
 
-// Simple routing: check which page we are on
+// ====== SIMPLE ROUTING ======
 document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("login-form")) {
     initAuthPage();
@@ -49,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// ---------- Auth page ----------
+// =================== AUTH PAGE ===================
 function initAuthPage() {
   const tabButtons = document.querySelectorAll(".tab-btn");
   const tabContents = document.querySelectorAll(".tab-content");
@@ -59,9 +62,10 @@ function initAuthPage() {
       const tab = btn.dataset.tab;
       tabButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      tabContents.forEach((c) =>
-        c.id === tab + "-tab" ? c.classList.add("active") : c.classList.remove("active")
-      );
+      tabContents.forEach((c) => {
+        if (c.id === tab + "-tab") c.classList.add("active");
+        else c.classList.remove("active");
+      });
     });
   });
 
@@ -79,7 +83,7 @@ function initAuthPage() {
     }
   });
 
-  // Login
+  // ----- Login -----
   const loginForm = document.getElementById("login-form");
   const loginError = document.getElementById("login-error");
 
@@ -103,7 +107,7 @@ function initAuthPage() {
     }
   });
 
-  // Signup
+  // ----- Signup -----
   const signupForm = document.getElementById("signup-form");
   const signupError = document.getElementById("signup-error");
 
@@ -119,7 +123,7 @@ function initAuthPage() {
     const email = document.getElementById("signup-email").value.trim();
     const password = document.getElementById("signup-password").value;
 
-    let payload = { role, name, password };
+    const payload = { role, name, password };
 
     if (role === "student") {
       payload.branch = branchOrDept;
@@ -142,13 +146,13 @@ function initAuthPage() {
     }
   });
 
-  // If already logged in, jump to dashboard
+  // Already logged in?
   if (getToken() && getUser()) {
     window.location.href = "dashboard.html";
   }
 }
 
-// ---------- Dashboard page ----------
+// =================== DASHBOARD PAGE ===================
 function initDashboardPage() {
   const user = getUser();
   if (!user || !getToken()) {
@@ -160,31 +164,41 @@ function initDashboardPage() {
   const userRoleBadge = document.getElementById("user-role-badge");
   const logoutBtn = document.getElementById("logout-btn");
 
-  userNameSpan.textContent = user.name;
-  userRoleBadge.textContent = user.role === "student" ? "Student" : "Teacher";
-  if (user.role === "student") {
-    document.querySelectorAll(".teacher-only").forEach((el) => el.style.display = "none");
-    document.getElementById("teacher-only-submissions").style.display = "none";
-  } else {
-    document.getElementById("student-only-pending").style.display = "none";
+  if (userNameSpan) userNameSpan.textContent = user.name;
+  if (userRoleBadge) {
+    userRoleBadge.textContent = user.role === "student" ? "Student" : "Teacher";
   }
 
-  logoutBtn.addEventListener("click", () => {
-    clearSession();
-    window.location.href = "index.html";
-  });
+  if (user.role === "student") {
+    document.querySelectorAll(".teacher-only").forEach((el) => (el.style.display = "none"));
+    const tSub = document.getElementById("teacher-only-submissions");
+    if (tSub) tSub.style.display = "none";
+  } else {
+    const sPending = document.getElementById("student-only-pending");
+    if (sPending) sPending.style.display = "none";
+  }
 
-  // Nav between views
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      clearSession();
+      window.location.href = "index.html";
+    });
+  }
+
+  // Navigation between sections
   const navBtns = document.querySelectorAll(".nav-btn");
   const views = document.querySelectorAll(".view");
+
   navBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       const view = btn.dataset.view;
       navBtns.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      views.forEach((v) =>
-        v.id === "view-" + view ? v.classList.add("active") : v.classList.remove("active")
-      );
+
+      views.forEach((v) => {
+        if (v.id === "view-" + view) v.classList.add("active");
+        else v.classList.remove("active");
+      });
 
       if (view === "courses") loadCourses();
       if (view === "assignments") loadAssignments();
@@ -201,49 +215,57 @@ function initDashboardPage() {
   loadAssignments();
   initMessagesView();
   loadProfile();
-
   initCoursesSection(user);
   initAssignmentsSection(user);
   initProfileSection(user);
 }
 
-// Dashboard summary
+// =================== DASHBOARD SUMMARY ===================
 async function loadDashboardSummary() {
   try {
     const data = await api("/api/dashboard/summary");
     const user = getUser();
+    if (!user) return;
 
-    document.getElementById("stat-courses").textContent = data.myCoursesCount ?? "0";
+    const coursesStat = document.getElementById("stat-courses");
+    if (coursesStat) coursesStat.textContent = data.myCoursesCount ?? "0";
 
     if (user.role === "student") {
-      document.getElementById("stat-pending").textContent =
-        data.pendingAssignmentsCount ?? "0";
+      const pendingSpan = document.getElementById("stat-pending");
+      if (pendingSpan) {
+        pendingSpan.textContent = data.pendingAssignmentsCount ?? "0";
+      }
+
       const extra = document.getElementById("overview-extra");
-      extra.innerHTML = "";
-      if (data.pendingAssignments && data.pendingAssignments.length > 0) {
-        const list = document.createElement("div");
-        list.className = "grid";
-        data.pendingAssignments.slice(0, 3).forEach((a) => {
-          const card = document.createElement("div");
-          card.className = "assignment-card";
-          card.innerHTML = `
-            <h4>${a.title}</h4>
-            <span class="small">Due: ${new Date(a.dueDate).toLocaleString()}</span>
-          `;
-          list.appendChild(card);
-        });
-        extra.appendChild(list);
+      if (extra) {
+        extra.innerHTML = "";
+        if (data.pendingAssignments && data.pendingAssignments.length > 0) {
+          const list = document.createElement("div");
+          list.className = "grid";
+          data.pendingAssignments.slice(0, 3).forEach((a) => {
+            const card = document.createElement("div");
+            card.className = "assignment-card";
+            card.innerHTML = `
+              <h4>${a.title}</h4>
+              <span class="small">Due: ${new Date(a.dueDate).toLocaleString()}</span>
+            `;
+            list.appendChild(card);
+          });
+          extra.appendChild(list);
+        }
       }
     } else {
-      document.getElementById("stat-to-grade").textContent =
-        data.submissionsToGradeCount ?? "0";
+      const toGradeSpan = document.getElementById("stat-to-grade");
+      if (toGradeSpan) {
+        toGradeSpan.textContent = data.submissionsToGradeCount ?? "0";
+      }
     }
   } catch (err) {
     console.error("Dashboard summary error:", err);
   }
 }
 
-// Courses
+// =================== COURSES ===================
 let cachedCourses = [];
 
 async function loadCourses() {
@@ -261,6 +283,8 @@ async function loadCourses() {
 function renderCourses() {
   const container = document.getElementById("courses-list");
   const user = getUser();
+  if (!container || !user) return;
+
   container.innerHTML = "";
   cachedCourses.forEach((c) => {
     const card = document.createElement("div");
@@ -269,12 +293,8 @@ function renderCourses() {
       <h4>${c.name}</h4>
       <div class="small">${c.code}</div>
       <div class="small">${c.description || ""}</div>
-      <div class="small">
-        Teacher: ${c.teacherName || "Not assigned"}
-      </div>
-      <div class="small">
-        Students: ${c.studentCount ?? c.students?.length ?? 0}
-      </div>
+      <div class="small">Teacher: ${c.teacherName || "Not assigned"}</div>
+      <div class="small">Students: ${c.studentCount ?? c.students?.length ?? 0}</div>
       <div class="small">
         <span class="tag">Course ID</span> ${c.id}
       </div>
@@ -283,6 +303,8 @@ function renderCourses() {
     container.appendChild(card);
 
     const actions = card.querySelector(`#course-actions-${c.id}`);
+    if (!actions) return;
+
     if (user.role === "student") {
       const isJoined = (c.students || []).includes(user.id);
       const btn = document.createElement("button");
@@ -319,7 +341,6 @@ function initCoursesSection(user) {
 
   if (searchInput) {
     searchInput.addEventListener("input", () => {
-      // live filter by title/code/description
       const q = searchInput.value.toLowerCase();
       const filtered = cachedCourses.filter(
         (c) =>
@@ -353,7 +374,9 @@ function initCoursesSection(user) {
         return async () => {
           const name = document.getElementById("modal-course-name").value.trim();
           const code = document.getElementById("modal-course-code").value.trim();
-          const description = document.getElementById("modal-course-desc").value.trim();
+          const description = document
+            .getElementById("modal-course-desc")
+            .value.trim();
           try {
             await api("/api/courses", {
               method: "POST",
@@ -370,12 +393,11 @@ function initCoursesSection(user) {
   }
 }
 
-// Assignments
+// =================== ASSIGNMENTS ===================
 let cachedAssignments = [];
 
 async function loadAssignments() {
   try {
-    // We need assignments course-wise; easiest: for each course we load separately
     const myCourses = await api("/api/my-courses");
     const all = [];
     for (const c of myCourses) {
@@ -394,6 +416,8 @@ async function loadAssignments() {
 function renderAssignments() {
   const container = document.getElementById("assignments-list");
   const user = getUser();
+  if (!container || !user) return;
+
   container.innerHTML = "";
   cachedAssignments.forEach((a) => {
     const card = document.createElement("div");
@@ -409,6 +433,8 @@ function renderAssignments() {
     container.appendChild(card);
 
     const actions = card.querySelector(`#assignment-actions-${a.id}`);
+    if (!actions) return;
+
     if (user.role === "student") {
       const btn = document.createElement("button");
       btn.className = "btn-primary-small";
@@ -476,7 +502,9 @@ function initAssignmentsSection(user) {
         return async () => {
           const courseId = document.getElementById("modal-assignment-course").value;
           const title = document.getElementById("modal-assignment-title").value.trim();
-          const description = document.getElementById("modal-assignment-desc").value.trim();
+          const description = document
+            .getElementById("modal-assignment-desc")
+            .value.trim();
           const dueLocal = document.getElementById("modal-assignment-due").value;
           const maxMarks = parseInt(
             document.getElementById("modal-assignment-max").value,
@@ -500,7 +528,7 @@ function initAssignmentsSection(user) {
 }
 
 function openSubmitAssignmentModal(assignment) {
-  openModal("Submit assignment", (body, close, modalEl) => {
+  openModal("Submit assignment", (body, close) => {
     body.innerHTML = `
       <p class="small">${assignment.title} — ${assignment.course.name}</p>
       <label>Upload files (pdf, images, doc/xls)</label>
@@ -554,15 +582,16 @@ function openGradeModal(assignment) {
       const list = document.createElement("div");
       list.style.maxHeight = "280px";
       list.style.overflowY = "auto";
+
       data.submissions.forEach((s) => {
         const div = document.createElement("div");
         div.className = "assignment-card";
+
+        // Use Cloudinary URL returned by backend
         const filesLinks = s.files
-          .map(
-            (f) =>
-              `<a href="${API_BASE}${f.path}" target="_blank">${f.originalName}</a>`
-          )
+          .map((f) => `<a href="${f.url}" target="_blank">${f.originalName}</a>`)
           .join("<br>");
+
         div.innerHTML = `
           <div class="small">
             <strong>${s.studentName}</strong> (${s.rollNumber || "roll?"})
@@ -572,14 +601,22 @@ function openGradeModal(assignment) {
           ).toLocaleString()}</div>
           <div class="small">${filesLinks}</div>
           <div class="small">
-            Marks: <input type="number" data-student-id="${s.studentId}" class="grade-marks" style="width:70px;" value="${s.marks ?? ""}">
+            Marks: <input type="number"
+              data-student-id="${s.studentId}"
+              class="grade-marks"
+              style="width:70px;"
+              value="${s.marks ?? ""}">
           </div>
           <div class="small">
-            Feedback: <input type="text" data-student-id="${s.studentId}" class="grade-feedback" style="width:95%;">
+            Feedback: <input type="text"
+              data-student-id="${s.studentId}"
+              class="grade-feedback"
+              style="width:95%;">
           </div>
         `;
         list.appendChild(div);
       });
+
       body.innerHTML = "";
       body.appendChild(list);
     } catch (err) {
@@ -587,37 +624,40 @@ function openGradeModal(assignment) {
     }
 
     return async () => {
-      const marksInputs = Array.from(
-        document.querySelectorAll(".grade-marks")
-      );
-      const feedbackInputs = Array.from(
-        document.querySelectorAll(".grade-feedback")
-      );
+      const marksInputs = Array.from(document.querySelectorAll(".grade-marks"));
+      const feedbackInputs = Array.from(document.querySelectorAll(".grade-feedback"));
 
       for (const mi of marksInputs) {
         const studentId = mi.dataset.studentId;
         const marks = mi.value;
         if (marks === "") continue;
+
         const feedbackInput = feedbackInputs.find(
           (fi) => fi.dataset.studentId === studentId
         );
         const feedback = feedbackInput ? feedbackInput.value : "";
+
         try {
           await api(`/api/assignments/${assignment.id}/grade`, {
             method: "POST",
-            body: JSON.stringify({ studentId, marks: parseInt(marks, 10), feedback })
+            body: JSON.stringify({
+              studentId,
+              marks: parseInt(marks, 10),
+              feedback
+            })
           });
         } catch (err) {
           alert("Error grading: " + err.message);
         }
       }
+
       close();
       loadDashboardSummary();
     };
   });
 }
 
-// Messages
+// =================== MESSAGES ===================
 async function initMessagesView() {
   const select = document.getElementById("messages-course-select");
   const container = document.getElementById("messages-container");
@@ -653,7 +693,9 @@ async function initMessagesView() {
   }
 
   select.addEventListener("change", loadMessages);
-  document.getElementById("btn-refresh-courses")?.addEventListener("click", loadMessages);
+  document
+    .getElementById("btn-refresh-courses")
+    ?.addEventListener("click", loadMessages);
   await loadMessages();
 
   form.addEventListener("submit", async (e) => {
@@ -675,18 +717,28 @@ async function initMessagesView() {
   });
 }
 
-// Profile
+// =================== PROFILE ===================
 async function loadProfile() {
   try {
     const data = await api("/api/me");
-    document.getElementById("profile-name").value = data.name || "";
-    document.getElementById("profile-role").value = data.role || "";
-    document.getElementById("profile-roll").value = data.rollNumber || "";
-    document.getElementById("profile-branch-dept").value =
-      data.role === "student" ? data.branch || "" : data.department || "";
-    document.getElementById("profile-year").value = data.year || "";
-    document.getElementById("profile-email").value = data.email || "";
-    document.getElementById("profile-photo").value = data.profilePhotoUrl || "";
+    const name = document.getElementById("profile-name");
+    const role = document.getElementById("profile-role");
+    const roll = document.getElementById("profile-roll");
+    const branchDept = document.getElementById("profile-branch-dept");
+    const year = document.getElementById("profile-year");
+    const email = document.getElementById("profile-email");
+    const photo = document.getElementById("profile-photo");
+
+    if (name) name.value = data.name || "";
+    if (role) role.value = data.role || "";
+    if (roll) roll.value = data.rollNumber || "";
+    if (branchDept) {
+      branchDept.value =
+        data.role === "student" ? data.branch || "" : data.department || "";
+    }
+    if (year) year.value = data.year || "";
+    if (email) email.value = data.email || "";
+    if (photo) photo.value = data.profilePhotoUrl || "";
   } catch (err) {
     console.error("Profile load error:", err);
   }
@@ -699,7 +751,7 @@ function initProfileSection(user) {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    message.textContent = "";
+    if (message) message.textContent = "";
 
     const name = document.getElementById("profile-name").value.trim();
     const branchDept = document.getElementById("profile-branch-dept").value.trim();
@@ -727,56 +779,63 @@ function initProfileSection(user) {
         method: "PUT",
         body: JSON.stringify(payload)
       });
-      message.textContent = "Profile updated.";
+      if (message) message.textContent = "Profile updated.";
       document.getElementById("profile-current-password").value = "";
       document.getElementById("profile-new-password").value = "";
       loadProfile();
     } catch (err) {
-      message.textContent = err.message;
+      if (message) message.textContent = err.message;
     }
   });
 }
 
+// =================== STUDY MATERIALS ===================
 async function initMaterialsView() {
   const courseSelect = document.getElementById("materials-course-select");
   const materialsList = document.getElementById("materials-list");
   const uploadBtn = document.getElementById("btn-upload-material");
   const user = getUser();
 
-  // Load user courses
+  if (!courseSelect || !materialsList || !user) return;
+
   const myCourses = await api("/api/my-courses");
   courseSelect.innerHTML = myCourses
-    .map(c => `<option value="${c.id}">${c.name} (${c.code})</option>`)
+    .map((c) => `<option value="${c.id}">${c.name} (${c.code})</option>`)
     .join("");
 
   async function loadMaterials() {
     const courseId = courseSelect.value;
-    const coursesDb = await api("/api/courses");
-    const course = coursesDb.find(c => c.id === courseId);
-
     materialsList.innerHTML = "";
 
-    if (!course || !course.materials || course.materials.length === 0) {
-      materialsList.innerHTML = "<p class='hint'>No study material uploaded yet.</p>";
+    if (!courseId) {
+      materialsList.innerHTML = "<p class='hint'>Select a course.</p>";
       return;
     }
 
-    course.materials.forEach(m => {
+    const coursesDb = await api("/api/courses");
+    const course = coursesDb.find((c) => c.id === courseId);
+
+    if (!course || !course.materials || course.materials.length === 0) {
+      materialsList.innerHTML =
+        "<p class='hint'>No study material uploaded yet.</p>";
+      return;
+    }
+
+    course.materials.forEach((m) => {
       const card = document.createElement("div");
       card.className = "assignment-card";
       card.innerHTML = `
         <h4>${m.originalName}</h4>
-        <a class="small" href="${API_BASE}${m.path}" target="_blank">Download</a>
+        <a class="small" href="${m.url}" target="_blank">Download</a>
       `;
       materialsList.appendChild(card);
     });
   }
 
   courseSelect.addEventListener("change", loadMaterials);
-  loadMaterials();
+  await loadMaterials();
 
-  // Upload material (teacher only)
-  if (user.role === "teacher") {
+  if (user.role === "teacher" && uploadBtn) {
     uploadBtn.onclick = () => {
       openModal("Upload Material", (body, close) => {
         body.innerHTML = `
@@ -797,33 +856,37 @@ async function initMaterialsView() {
 
           try {
             const token = getToken();
-            const res = await fetch(`${API_BASE}/api/courses/${courseId}/materials`, {
-              method: "POST",
-              headers: { Authorization: "Bearer " + token },
-              body: formData
-            });
+            const res = await fetch(
+              `${API_BASE}/api/courses/${courseId}/materials`,
+              {
+                method: "POST",
+                headers: { Authorization: "Bearer " + token },
+                body: formData
+              }
+            );
             if (!res.ok) throw new Error("Upload failed");
             close();
-            initMaterialsView();
+            await loadMaterials();
           } catch (e) {
             alert("Error: " + e.message);
           }
         };
       });
     };
-  } else {
-    uploadBtn.style.display = "none"; // hide for students
+  } else if (uploadBtn) {
+    uploadBtn.style.display = "none";
   }
 }
 
-
-// Modal helper
+// =================== MODAL HELPER ===================
 function openModal(title, buildFn) {
   const modal = document.getElementById("modal");
   const modalTitle = document.getElementById("modal-title");
   const modalBody = document.getElementById("modal-body");
   const btnCancel = document.getElementById("modal-cancel");
   const btnSave = document.getElementById("modal-save");
+
+  if (!modal || !modalTitle || !modalBody || !btnCancel || !btnSave) return;
 
   modalTitle.textContent = title;
   modalBody.innerHTML = "";
@@ -847,4 +910,3 @@ function openModal(title, buildFn) {
     }
   };
 }
-
