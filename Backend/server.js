@@ -85,7 +85,7 @@ const userSchema = new mongoose.Schema({
 
 const fileSchema = new mongoose.Schema(
   {
-    url: String,
+    url: String,          // Cloudinary URL
     originalName: String,
     mimetype: String,
     size: Number,
@@ -111,7 +111,7 @@ const courseSchema = new mongoose.Schema({
   description: { type: String, default: "" },
   teacherId: String, // user.id
   students: [String], // array of user.id (students)
-  materials: [fileSchema], // study materials
+  materials: [fileSchema], // study materials (Cloudinary URLs)
 });
 
 const assignmentSchema = new mongoose.Schema({
@@ -589,7 +589,7 @@ app.get(
   }
 );
 
-// Student submits assignment (multiple files)
+// Student submits assignment (multiple files) → Cloudinary
 app.post(
   "/api/assignments/:assignmentId/submit",
   authMiddleware,
@@ -712,7 +712,7 @@ app.get(
         studentId: s.studentId,
         studentName: student ? student.name : "Unknown",
         rollNumber: student ? student.rollNumber : null,
-        files: s.files,
+        files: s.files,               // each file has url
         submittedAt: s.submittedAt,
         marks: s.marks,
         feedback: s.feedback,
@@ -851,7 +851,7 @@ app.post(
   }
 );
 
-// --- Study materials upload ---
+// --- Study materials upload (Cloudinary) ---
 app.post(
   "/api/courses/:courseId/materials",
   authMiddleware,
@@ -987,3 +987,5 @@ app.get(
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
+
+
