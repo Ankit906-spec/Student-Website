@@ -1,5 +1,6 @@
 // Change this when you deploy backend
-const API_BASE = "http://localhost:4000";
+const API_BASE = "https://student-website-1-mx8v.onrender.com";
+
 
 function getToken() {
   return localStorage.getItem("token");
@@ -846,3 +847,4 @@ function openModal(title, buildFn) {
     }
   };
 }
+
