@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Neon Student Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg">
+  <div class="stars"></div>
+  <div class="glow-orb"></div>
+
+  <div class="auth-container">
+    <div class="brand">
+      <h1>Neon<span>Campus</span></h1>
+      <p>Futuristic student-teacher hub for 250 humans.</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login">Login</button>
+      <button class="tab-btn" data-tab="signup">Sign up</button>
+    </div>
+
+    <!-- Login form -->
+    <div class="tab-content active" id="login-tab">
+      <form id="login-form">
+        <label>Role</label>
+        <select id="login-role">
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+
+        <label>Roll no (student) / Email (teacher)</label>
+        <input type="text" id="login-identifier" placeholder="e.g., 25WU0801001 or Sheldon_2028woxsen.edu.in" required>
+
+        <label>Password</label>
+        <input type="password" id="login-password" required>
+
+        <button type="submit" class="btn-primary">Login</button>
+        <p class="hint">Use the same portal for both students and teachers.</p>
+        <p id="login-error" class="error"></p>
+      </form>
+    </div>
+
+    <!-- Signup form -->
+    <div class="tab-content" id="signup-tab">
+      <form id="signup-form">
+        <label>Role</label>
+        <select id="signup-role">
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+
+        <div class="two-col">
+          <div>
+            <label>Full name</label>
+            <input type="text" id="signup-name" required>
+          </div>
+          <div>
+            <label>Department / Branch</label>
+            <input type="text" id="signup-branch-dept" placeholder="CSE / ECE / BCA / Physics">
+          </div>
+        </div>
+
+        <div id="student-extra">
+          <div class="two-col">
+            <div>
+              <label>Roll number</label>
+              <input type="text" id="signup-roll" placeholder="25WU0801001">
+            </div>
+            <div>
+              <label>Year / Sem</label>
+              <input type="text" id="signup-year" placeholder="1st year / Sem 1">
+            </div>
+          </div>
+        </div>
+
+        <div id="teacher-extra" class="hidden">
+          <label>Email (for teacher login)</label>
+          <input type="email" id="signup-email" placeholder="Sheldon_2028@woxsen.edu.in">
+        </div>
+
+        <label>Password</label>
+        <input type="password" id="signup-password" required>
+
+        <button type="submit" class="btn-primary">Create account</button>
+        <p class="hint">Students login via roll number. Teachers login via email.</p>
+        <p id="signup-error" class="error"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
