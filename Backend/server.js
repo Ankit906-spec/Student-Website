@@ -20,13 +20,14 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || null; // optional: only this email can be "real teacher"
 
 if (!JWT_SECRET) {
-  console.error("❌ JWT_SECRET is not set in environment variables");
+  console.error("JWT_SECRET is not set in environment variables");
   process.exit(1);
 }
 if (!MONGODB_URI) {
-  console.error("❌ MONGODB_URI is not set in environment variables");
+  console.error("MONGODB_URI is not set in environment variables");
   process.exit(1);
 }
 
@@ -87,8 +88,16 @@ const userSchema = new mongoose.Schema({
   department: { type: String, default: null },
   profilePhotoUrl: { type: String, default: null },
   passwordHash: { type: String, required: true },
+  resetPasswordToken: { type: String, default: null },
+  resetPasswordExpires: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
 });
+
+// Indexes for scale
+userSchema.index({ role: 1, email: 1 });
+userSchema.index({ role: 1, rollNumber: 1 });
+userSchema.index({ id: 1 }, { unique: true });
+userSchema.index({ resetPasswordToken: 1, resetPasswordExpires: 1 });
 
 const fileSchema = new mongoose.Schema(
   {
@@ -107,6 +116,7 @@ const submissionSchema = new mongoose.Schema(
     submittedAt: Date,
     marks: { type: Number, default: null },
     feedback: { type: String, default: null },
+    isLate: { type: Boolean, default: false }, // Option B: mark late but allow
   },
   { _id: false }
 );
@@ -121,17 +131,25 @@ const courseSchema = new mongoose.Schema({
   materials: [fileSchema], // study materials (Cloudinary URLs)
 });
 
+courseSchema.index({ id: 1 }, { unique: true });
+courseSchema.index({ code: 1 }, { unique: true });
+courseSchema.index({ teacherId: 1 });
+courseSchema.index({ students: 1 });
+
 const assignmentSchema = new mongoose.Schema({
   id: { type: String, unique: true },
   courseId: String, // course.id
   title: String,
   description: { type: String, default: "" },
-  dueDate: String,
+  dueDate: String, // ISO string
   maxMarks: Number,
   createdBy: String, // teacher user.id
   createdAt: { type: Date, default: Date.now },
   submissions: [submissionSchema],
 });
+
+assignmentSchema.index({ courseId: 1 });
+assignmentSchema.index({ id: 1 }, { unique: true });
 
 const messageSchema = new mongoose.Schema({
   id: { type: String, unique: true },
@@ -140,6 +158,8 @@ const messageSchema = new mongoose.Schema({
   content: String,
   createdAt: { type: Date, default: Date.now },
 });
+
+messageSchema.index({ courseId: 1, createdAt: 1 });
 
 // Models
 const User = mongoose.model("User", userSchema);
@@ -163,6 +183,19 @@ async function uploadToCloudinary(file, folder) {
     mimetype: file.mimetype,
     size: file.size,
   };
+}
+
+// Helper: check if user is "admin teacher" who can create courses
+async function isAdminUser(userId) {
+  const user = await User.findOne({ id: userId });
+  if (!user) return false;
+
+  if (ADMIN_EMAIL) {
+    return user.email === ADMIN_EMAIL && user.role === "teacher";
+  }
+
+  // If ADMIN_EMAIL not set, fall back to "any teacher can create"
+  return user.role === "teacher";
 }
 
 // --- Auth middleware ---
@@ -196,10 +229,12 @@ app.post("/api/signup", async (req, res) => {
       department,
       password,
     } = req.body;
+
     if (!role || !name || !password) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    // Student validations
     if (role === "student") {
       if (!rollNumber || !branch || !year) {
         return res
@@ -215,12 +250,22 @@ app.post("/api/signup", async (req, res) => {
           .status(400)
           .json({ message: "Student with this roll number already exists" });
       }
-    } else if (role === "teacher") {
+    }
+    // Teacher validations + only ADMIN_EMAIL can be teacher (if set)
+    else if (role === "teacher") {
       if (!email || !department) {
         return res
           .status(400)
           .json({ message: "Teacher must have email and department" });
       }
+
+      if (ADMIN_EMAIL && email !== ADMIN_EMAIL) {
+        return res.status(403).json({
+          message:
+            "Teacher registration is restricted. Contact admin to create a teacher account.",
+        });
+      }
+
       const existingTeacher = await User.findOne({
         role: "teacher",
         email,
@@ -329,6 +374,73 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// Forgot password (no auth)
+app.post("/api/forgot-password", async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier) {
+      return res.status(400).json({ message: "Identifier required" });
+    }
+
+    // allow either email or rollNumber
+    let user =
+      (await User.findOne({ email: identifier })) ||
+      (await User.findOne({ rollNumber: identifier }));
+
+    if (!user) {
+      // do NOT reveal that user doesn't exist → generic message
+      return res.json({
+        message:
+          "If an account exists with that identifier, a reset link/token has been created.",
+      });
+    }
+
+    const token = uuidv4();
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    // In production: send email with token link.
+    // For now: return token in response so frontend can show it.
+    res.json({
+      message: "Password reset token created (valid for 1 hour).",
+      token,
+    });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Reset password (no auth)
+app.post("/api/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and newPassword required" });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    res.json({ message: "Password has been reset successfully" });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Get current user profile
 app.get("/api/me", authMiddleware, async (req, res) => {
   const user = await User.findOne({ id: req.user.id });
@@ -416,10 +528,17 @@ app.get("/api/courses", authMiddleware, async (req, res) => {
   res.json(result);
 });
 
-// Teacher creates a course
+// Teacher (admin only) creates a course
 app.post("/api/courses", authMiddleware, async (req, res) => {
+  // still require role teacher AND admin check
   if (req.user.role !== "teacher") {
     return res.status(403).json({ message: "Only teachers can create courses" });
+  }
+
+  if (!(await isAdminUser(req.user.id))) {
+    return res.status(403).json({
+      message: "Course creation is restricted to the admin teacher account.",
+    });
   }
 
   const { name, code, description } = req.body;
@@ -484,7 +603,6 @@ app.get("/api/my-courses", authMiddleware, async (req, res) => {
   const teacherMap = new Map(teachers.map((t) => [t.id, t.name]));
 
   const result = courses.map((c) => ({
-
     ...c.toObject(),
     teacherName: c.teacherId ? teacherMap.get(c.teacherId) : null,
     studentCount: c.students.length,
@@ -494,7 +612,7 @@ app.get("/api/my-courses", authMiddleware, async (req, res) => {
 });
 
 // --- Assignments ---
-// Teacher creates assignment
+// Teacher creates assignment (with deadline)
 app.post("/api/assignments", authMiddleware, async (req, res) => {
   if (req.user.role !== "teacher") {
     return res
@@ -520,7 +638,7 @@ app.post("/api/assignments", authMiddleware, async (req, res) => {
     courseId,
     title,
     description: description || "",
-    dueDate,
+    dueDate, // store incoming ISO string
     maxMarks,
     createdBy: req.user.id,
     createdAt: new Date(),
@@ -543,6 +661,7 @@ app.get(
 );
 
 // Student submits assignment (multiple files) → Cloudinary
+// Option B: allow late, mark isLate true
 app.post(
   "/api/assignments/:assignmentId/submit",
   authMiddleware,
@@ -585,6 +704,10 @@ app.post(
           uploadedFiles.push(meta);
         }
 
+        const now = new Date();
+        const due = assignment.dueDate ? new Date(assignment.dueDate) : null;
+        const isLate = due ? now > due : false; // Option B
+
         let submission =
           assignment.submissions.find((s) => s.studentId === req.user.id) || null;
 
@@ -592,14 +715,16 @@ app.post(
           submission = {
             studentId: req.user.id,
             files: uploadedFiles,
-            submittedAt: new Date(),
+            submittedAt: now,
             marks: null,
             feedback: null,
+            isLate,
           };
           assignment.submissions.push(submission);
         } else {
           submission.files.push(...uploadedFiles);
-          submission.submittedAt = new Date();
+          submission.submittedAt = now;
+          submission.isLate = isLate;
         }
 
         await assignment.save();
@@ -651,10 +776,11 @@ app.get(
         studentId: s.studentId,
         studentName: student ? student.name : "Unknown",
         rollNumber: student ? student.rollNumber : null,
-        files: s.files, // each file has url
+        files: s.files, // each file has url (Cloudinary)
         submittedAt: s.submittedAt,
         marks: s.marks,
         feedback: s.feedback,
+        isLate: s.isLate || false,
       };
     });
 
@@ -807,7 +933,6 @@ app.post(
           });
         }
 
-        // 🔧 FIX: make sure materials array exists before pushing
         if (!course.materials) {
           course.materials = [];
         }
@@ -885,6 +1010,7 @@ app.get("/api/dashboard/summary", authMiddleware, async (req, res) => {
             courseId: a.courseId,
             studentId: s.studentId,
             submittedAt: s.submittedAt,
+            isLate: s.isLate || false,
           });
         }
       });
