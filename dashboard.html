@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Dashboard | Neon Student Portal</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body class="bg">
   <div class="stars"></div>
@@ -31,7 +32,7 @@
     </aside>
 
     <section class="content">
-      <!-- Overview -->
+      <!-- ===== OVERVIEW ===== -->
       <div class="view active" id="view-overview">
         <h3>Overview</h3>
         <div class="cards">
@@ -52,95 +53,148 @@
         <div id="overview-extra"></div>
       </div>
 
-      <!-- Courses -->
+      <!-- ===== COURSES ===== -->
       <div class="view" id="view-courses">
         <div class="view-header">
           <h3>Courses</h3>
           <div class="view-actions">
-            <input type="text" id="course-search" placeholder="Search courses...">
-            <button id="btn-refresh-courses" class="btn-outline-small">Refresh</button>
-            <button id="btn-create-course" class="btn-primary-small teacher-only">+ Create course</button>
+            <input
+              type="text"
+              id="course-search"
+              placeholder="Search courses..."
+            />
+            <button
+              id="btn-refresh-courses"
+              class="btn-outline-small"
+            >
+              Refresh
+            </button>
+            <button
+              id="btn-create-course"
+              class="btn-primary-small teacher-only"
+            >
+              + Create course
+            </button>
           </div>
         </div>
 
         <div id="courses-list" class="grid"></div>
       </div>
 
-      <!-- Assignments -->
+      <!-- ===== ASSIGNMENTS ===== -->
       <div class="view" id="view-assignments">
         <div class="view-header">
           <h3>Assignments</h3>
           <div class="view-actions">
-            <input type="text" id="assignment-search" placeholder="Search assignments...">
-            <button id="btn-refresh-assignments" class="btn-outline-small">Refresh</button>
-            <button id="btn-create-assignment" class="btn-primary-small teacher-only">+ New assignment</button>
+            <input
+              type="text"
+              id="assignment-search"
+              placeholder="Search assignments..."
+            />
+            <button
+              id="btn-refresh-assignments"
+              class="btn-outline-small"
+            >
+              Refresh
+            </button>
+            <button
+              id="btn-create-assignment"
+              class="btn-primary-small teacher-only"
+            >
+              + New assignment
+            </button>
           </div>
         </div>
+
         <div id="assignments-list" class="grid"></div>
       </div>
 
-      <!-- Course board -->
+      <!-- ===== COURSE BOARD / MESSAGES ===== -->
       <div class="view" id="view-messages">
         <div class="view-header">
           <h3>Course discussion board</h3>
           <select id="messages-course-select"></select>
         </div>
+
         <div id="messages-container" class="messages"></div>
+
         <form id="message-form" class="message-form">
-          <input type="text" id="message-input" placeholder="Type a message for this course...">
+          <input
+            type="text"
+            id="message-input"
+            placeholder="Type a message for this course..."
+          />
           <button type="submit" class="btn-primary-small">Send</button>
         </form>
       </div>
 
-      <!-- Profile -->
+      <!-- ===== STUDY MATERIALS ===== -->
+      <div class="view" id="view-materials">
+        <div class="view-header">
+          <h3>Study Materials</h3>
+          <div class="view-actions">
+            <select id="materials-course-select"></select>
+            <button
+              id="btn-upload-material"
+              class="btn-primary-small teacher-only"
+            >
+              Upload Material
+            </button>
+          </div>
+        </div>
+
+        <div id="materials-list" class="grid"></div>
+      </div>
+
+      <!-- ===== PROFILE ===== -->
       <div class="view" id="view-profile">
         <h3>Profile</h3>
         <form id="profile-form" class="profile-form">
           <div class="two-col">
             <div>
               <label>Full name</label>
-              <input type="text" id="profile-name">
+              <input type="text" id="profile-name" />
             </div>
             <div>
               <label>Role</label>
-              <input type="text" id="profile-role" disabled>
+              <input type="text" id="profile-role" disabled />
             </div>
           </div>
 
           <div class="two-col">
             <div>
               <label>Roll number (student)</label>
-              <input type="text" id="profile-roll" disabled>
+              <input type="text" id="profile-roll" disabled />
             </div>
             <div>
               <label>Branch / Department</label>
-              <input type="text" id="profile-branch-dept">
+              <input type="text" id="profile-branch-dept" />
             </div>
           </div>
 
           <div class="two-col">
             <div>
               <label>Year / Sem</label>
-              <input type="text" id="profile-year">
+              <input type="text" id="profile-year" />
             </div>
             <div>
               <label>Email (teacher)</label>
-              <input type="email" id="profile-email" disabled>
+              <input type="email" id="profile-email" disabled />
             </div>
           </div>
 
           <label>Profile photo URL (optional)</label>
-          <input type="text" id="profile-photo">
+          <input type="text" id="profile-photo" />
 
           <h4>Change password</h4>
           <div class="two-col">
             <div>
               <label>Current password</label>
-              <input type="password" id="profile-current-password">
+              <input type="password" id="profile-current-password" />
             </div>
             <div>
               <label>New password</label>
-              <input type="password" id="profile-new-password">
+              <input type="password" id="profile-new-password" />
             </div>
           </div>
 
@@ -148,24 +202,10 @@
           <p id="profile-message" class="hint"></p>
         </form>
       </div>
-      <!-- Study Materials -->
-<div class="view" id="view-materials">
-  <div class="view-header">
-    <h3>Study Materials</h3>
-
-    <div class="view-actions">
-      <select id="materials-course-select"></select>
-      <button id="btn-upload-material" class="btn-primary-small teacher-only">Upload Material</button>
-    </div>
-  </div>
-
-  <div id="materials-list" class="grid"></div>
-</div>
-
     </section>
   </main>
 
-  <!-- Simple modal for create course / assignment / submit -->
+  <!-- ===== MODAL (COURSES / ASSIGNMENTS / SUBMISSION / MATERIALS) ===== -->
   <div class="modal hidden" id="modal">
     <div class="modal-content">
       <h3 id="modal-title"></h3>
