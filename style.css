@@ -34,7 +34,8 @@ body.bg {
   pointer-events: none;
 }
 
-/* Auth container */
+/* ---------- AUTH CONTAINER ---------- */
+
 .auth-container {
   position: relative;
   z-index: 1;
@@ -61,6 +62,8 @@ body.bg {
   color: #a1a6ce;
 }
 
+/* ---------- TABS ---------- */
+
 .tabs {
   display: flex;
   margin-top: 18px;
@@ -68,6 +71,7 @@ body.bg {
   background: #060918;
   padding: 3px;
 }
+
 .tab-btn {
   flex: 1;
   border: none;
@@ -79,6 +83,7 @@ body.bg {
   cursor: pointer;
   transition: all 0.18s ease-out;
 }
+
 .tab-btn.active {
   background: linear-gradient(135deg, #446dff, #5a4cff);
   color: #fff;
@@ -89,30 +94,37 @@ body.bg {
   display: none;
   margin-top: 18px;
 }
+
 .tab-content.active {
   display: block;
 }
 
-/* ✨ NEW: Password wrapper for eye icon */
+/* ---------- PASSWORD TOGGLE ---------- */
+
 .password-wrapper {
   position: relative;
   width: 100%;
 }
 
-.eye-toggle {
+.toggle-password-btn {
   position: absolute;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  opacity: 0.7;
+  background: none;
+  border: none;
   font-size: 14px;
+  opacity: 0.7;
+  color: #cbd2ff;
 }
-.eye-toggle:hover {
+
+.toggle-password-btn:hover {
   opacity: 1;
 }
 
-/* ✨ NEW: Forgot password link */
+/* ---------- FORGOT PASSWORD ---------- */
+
 #forgot-password {
   font-size: 12px;
   text-align: right;
@@ -121,9 +133,12 @@ body.bg {
   color: #4de5ff;
   cursor: pointer;
 }
+
 #forgot-password:hover {
   text-decoration: underline;
 }
+
+/* ---------- INPUTS ---------- */
 
 label {
   display: block;
@@ -132,7 +147,8 @@ label {
   margin-bottom: 4px;
 }
 
-input, select {
+input,
+select {
   width: 100%;
   padding: 8px 10px;
   border-radius: 10px;
@@ -144,7 +160,9 @@ input, select {
   margin-bottom: 10px;
   transition: border 0.15s ease, box-shadow 0.15s ease;
 }
-input:focus, select:focus {
+
+input:focus,
+select:focus {
   border-color: #4c8dff;
   box-shadow: 0 0 0 1px #4c8dff55;
 }
@@ -159,7 +177,8 @@ input:focus, select:focus {
   display: none !important;
 }
 
-/* Buttons */
+/* ---------- BUTTONS ---------- */
+
 .btn-primary,
 .btn-primary-small {
   border: none;
@@ -174,16 +193,19 @@ input:focus, select:focus {
   transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
   box-shadow: 0 10px 30px rgba(76, 118, 255, 0.3);
 }
+
 .btn-primary-small {
   width: auto;
   padding: 6px 10px;
   font-size: 12px;
 }
+
 .btn-primary:hover,
 .btn-primary-small:hover {
   transform: translateY(-1px);
   box-shadow: 0 16px 40px rgba(76, 118, 255, 0.5);
 }
+
 .btn-primary:active,
 .btn-primary-small:active {
   transform: translateY(0);
@@ -201,6 +223,7 @@ input:focus, select:focus {
   font-size: 13px;
   cursor: pointer;
 }
+
 .btn-outline-small {
   padding: 5px 10px;
   font-size: 12px;
@@ -211,13 +234,15 @@ input:focus, select:focus {
   font-size: 11px;
   color: #848bd0;
 }
+
 .error {
   margin-top: 4px;
   font-size: 12px;
   color: #ff6b9b;
 }
 
-/* Dashboard */
+/* ---------- DASHBOARD LAYOUT ---------- */
+
 .topbar {
   position: fixed;
   top: 10px;
@@ -240,6 +265,7 @@ input:focus, select:focus {
 .topbar-left h2 span {
   color: #4c8dff;
 }
+
 .badge {
   margin-left: 10px;
   font-size: 11px;
@@ -292,6 +318,7 @@ input:focus, select:focus {
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
+
 .nav-btn.active {
   background: linear-gradient(135deg, #425cff, #9b4cff);
   color: #fff;
@@ -304,6 +331,8 @@ input:focus, select:focus {
   padding: 14px 16px 16px;
   min-height: 480px;
 }
+
+/* ---------- VIEWS ---------- */
 
 .view {
   display: none;
@@ -318,6 +347,7 @@ input:focus, select:focus {
   justify-content: space-between;
   margin-bottom: 10px;
 }
+
 .view-header h3 {
   font-size: 16px;
 }
@@ -327,6 +357,8 @@ input:focus, select:focus {
   align-items: center;
   gap: 8px;
 }
+
+/* ---------- STAT CARDS ---------- */
 
 .cards {
   display: grid;
@@ -341,17 +373,20 @@ input:focus, select:focus {
   border: 1px solid #29305c;
   padding: 10px;
 }
+
 .card h4 {
   font-size: 13px;
   color: #c0c7ff;
 }
+
 .card p {
   margin-top: 6px;
   font-size: 20px;
   font-weight: 600;
 }
 
-/* Lists */
+/* ---------- LISTS ---------- */
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -392,7 +427,8 @@ input:focus, select:focus {
   color: #8e96d5;
 }
 
-/* Messages */
+/* ---------- MESSAGES ---------- */
+
 .messages {
   margin-top: 8px;
   padding: 8px;
@@ -402,34 +438,29 @@ input:focus, select:focus {
   max-height: 260px;
   overflow-y: auto;
 }
+
 .message {
   margin-bottom: 8px;
 }
+
 .message-header {
   font-size: 11px;
   color: #8d94d8;
 }
+
 .message-content {
   font-size: 13px;
   color: #dde2ff;
 }
 
-.message-form {
-  margin-top: 8px;
-  display: flex;
-  gap: 8px;
-}
-.message-form input {
-  flex: 1;
-  margin-bottom: 0;
-}
+/* ---------- PROFILE ---------- */
 
-/* Profile */
 .profile-form {
   margin-top: 6px;
 }
 
-/* Modal */
+/* ---------- MODAL ---------- */
+
 .modal {
   position: fixed;
   inset: 0;
@@ -439,9 +470,11 @@ input:focus, select:focus {
   justify-content: center;
   z-index: 10;
 }
+
 .modal.hidden {
   display: none;
 }
+
 .modal-content {
   width: 380px;
   max-width: 90vw;
@@ -450,10 +483,12 @@ input:focus, select:focus {
   border: 1px solid #29305c;
   padding: 16px 16px 12px;
 }
+
 .modal-content h3 {
   font-size: 15px;
   margin-bottom: 8px;
 }
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -461,7 +496,8 @@ input:focus, select:focus {
   margin-top: 10px;
 }
 
-/* Responsive */
+/* ---------- RESPONSIVE ---------- */
+
 @media (max-width: 780px) {
   .layout {
     grid-template-columns: 1fr;
