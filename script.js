@@ -1,7 +1,10 @@
-// ====== CONFIG ======
+// ================== CONFIG ==================
 const API_BASE = "https://student-website-1-mx8v.onrender.com";
 
-// ====== SESSION HELPERS ======
+// Only THIS teacher email can create courses (admin)
+const ADMIN_COURSE_EMAIL = "David_2028@woxsen.edu.in";
+
+// ================== SESSION HELPERS ==================
 function getToken() {
   return localStorage.getItem("token");
 }
@@ -18,7 +21,7 @@ function clearSession() {
   localStorage.removeItem("user");
 }
 
-// ====== GENERIC API HELPER ======
+// ================== GENERIC API HELPER ==================
 async function api(path, options = {}) {
   const token = getToken();
   const headers = options.headers ? { ...options.headers } : {};
@@ -42,7 +45,7 @@ async function api(path, options = {}) {
   return res.json().catch(() => ({}));
 }
 
-// ====== SIMPLE ROUTING ======
+// ================== SIMPLE ROUTING ==================
 document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("login-form")) {
     initAuthPage();
@@ -52,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// =================== AUTH PAGE ===================
+// ================== AUTH PAGE ==================
 function initAuthPage() {
   const tabButtons = document.querySelectorAll(".tab-btn");
   const tabContents = document.querySelectorAll(".tab-content");
@@ -73,78 +76,166 @@ function initAuthPage() {
   const studentExtra = document.getElementById("student-extra");
   const teacherExtra = document.getElementById("teacher-extra");
 
-  signupRole.addEventListener("change", () => {
-    if (signupRole.value === "student") {
-      studentExtra.classList.remove("hidden");
-      teacherExtra.classList.add("hidden");
-    } else {
-      studentExtra.classList.add("hidden");
-      teacherExtra.classList.remove("hidden");
-    }
-  });
+  if (signupRole) {
+    signupRole.addEventListener("change", () => {
+      if (signupRole.value === "student") {
+        studentExtra?.classList.remove("hidden");
+        teacherExtra?.classList.add("hidden");
+      } else {
+        studentExtra?.classList.add("hidden");
+        teacherExtra?.classList.remove("hidden");
+      }
+    });
+  }
 
   // ----- Login -----
   const loginForm = document.getElementById("login-form");
   const loginError = document.getElementById("login-error");
 
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    loginError.textContent = "";
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (loginError) loginError.textContent = "";
 
-    const role = document.getElementById("login-role").value;
-    const identifier = document.getElementById("login-identifier").value.trim();
-    const password = document.getElementById("login-password").value;
+      const role = document.getElementById("login-role").value;
+      const identifier = document
+        .getElementById("login-identifier")
+        .value.trim();
+      const password = document.getElementById("login-password").value;
 
-    try {
-      const data = await api("/api/login", {
-        method: "POST",
-        body: JSON.stringify({ role, identifier, password })
-      });
-      saveSession(data.token, data.user);
-      window.location.href = "dashboard.html";
-    } catch (err) {
-      loginError.textContent = err.message;
-    }
-  });
+      try {
+        const data = await api("/api/login", {
+          method: "POST",
+          body: JSON.stringify({ role, identifier, password })
+        });
+        saveSession(data.token, data.user);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        if (loginError) loginError.textContent = err.message;
+      }
+    });
+  }
 
   // ----- Signup -----
   const signupForm = document.getElementById("signup-form");
   const signupError = document.getElementById("signup-error");
 
-  signupForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    signupError.textContent = "";
+  if (signupForm) {
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (signupError) signupError.textContent = "";
 
-    const role = signupRole.value;
-    const name = document.getElementById("signup-name").value.trim();
-    const branchOrDept = document.getElementById("signup-branch-dept").value.trim();
-    const rollNumber = document.getElementById("signup-roll").value.trim();
-    const year = document.getElementById("signup-year").value.trim();
-    const email = document.getElementById("signup-email").value.trim();
-    const password = document.getElementById("signup-password").value;
+      const role = signupRole ? signupRole.value : "student";
+      const name = document.getElementById("signup-name").value.trim();
+      const branchOrDept = document
+        .getElementById("signup-branch-dept")
+        .value.trim();
+      const rollNumber = document.getElementById("signup-roll").value.trim();
+      const year = document.getElementById("signup-year").value.trim();
+      const email = document.getElementById("signup-email").value.trim();
+      const password = document.getElementById("signup-password").value;
 
-    const payload = { role, name, password };
+      const payload = { role, name, password };
 
-    if (role === "student") {
-      payload.branch = branchOrDept;
-      payload.rollNumber = rollNumber;
-      payload.year = year;
-    } else {
-      payload.department = branchOrDept;
-      payload.email = email;
-    }
+      if (role === "student") {
+        payload.branch = branchOrDept;
+        payload.rollNumber = rollNumber;
+        payload.year = year;
+      } else {
+        payload.department = branchOrDept;
+        payload.email = email;
+      }
 
-    try {
-      const data = await api("/api/signup", {
-        method: "POST",
-        body: JSON.stringify(payload)
+      try {
+        const data = await api("/api/signup", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        saveSession(data.token, data.user);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        if (signupError) signupError.textContent = err.message;
+      }
+    });
+
+    // "Create account" button should also trigger signup
+    const createAccountBtn = document.getElementById("btn-create-account");
+    if (createAccountBtn) {
+      createAccountBtn.addEventListener("click", () => {
+        signupForm.requestSubmit();
       });
-      saveSession(data.token, data.user);
-      window.location.href = "dashboard.html";
-    } catch (err) {
-      signupError.textContent = err.message;
     }
-  });
+  }
+
+  // ----- Forgot password (frontend-only for now) -----
+  const forgotLink = document.getElementById("forgot-password-link");
+  if (forgotLink) {
+    forgotLink.addEventListener("click", () => {
+      openModal("Reset password", (body, close) => {
+        body.innerHTML = `
+          <p class="small">
+            Enter your details to request a password reset.
+            (This requires backend support – if it fails, contact the site admin.)
+          </p>
+          <label>Role</label>
+          <select id="reset-role">
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+          </select>
+          <label>Roll number or email</label>
+          <input type="text" id="reset-identifier" placeholder="Roll no (student) or email (teacher)">
+          <label>New password</label>
+          <input type="password" id="reset-new-password">
+          <label>Confirm new password</label>
+          <input type="password" id="reset-confirm-password">
+        `;
+        // Add password toggle on these too
+        attachPasswordToggle("reset-new-password");
+        attachPasswordToggle("reset-confirm-password");
+
+        return async () => {
+          const role = document.getElementById("reset-role").value;
+          const identifier = document
+            .getElementById("reset-identifier")
+            .value.trim();
+          const newPassword = document
+            .getElementById("reset-new-password")
+            .value;
+          const confirm = document.getElementById(
+            "reset-confirm-password"
+          ).value;
+
+          if (!identifier || !newPassword || !confirm) {
+            alert("Please fill all fields.");
+            return;
+          }
+          if (newPassword !== confirm) {
+            alert("Passwords do not match.");
+            return;
+          }
+
+          try {
+            // NOTE: backend endpoint must be implemented later
+            await api("/api/auth/reset-password", {
+              method: "POST",
+              body: JSON.stringify({ role, identifier, newPassword })
+            });
+            alert("Password reset successful. You can now log in.");
+            close();
+          } catch (err) {
+            alert(
+              "Reset failed: " +
+                err.message +
+                "\nIf this keeps happening, contact the admin."
+            );
+          }
+        };
+      });
+    });
+  }
+
+  // ----- Password eye toggle -----
+  initPasswordToggles();
 
   // Already logged in?
   if (getToken() && getUser()) {
@@ -152,7 +243,7 @@ function initAuthPage() {
   }
 }
 
-// =================== DASHBOARD PAGE ===================
+// ================== DASHBOARD PAGE ==================
 function initDashboardPage() {
   const user = getUser();
   if (!user || !getToken()) {
@@ -170,7 +261,9 @@ function initDashboardPage() {
   }
 
   if (user.role === "student") {
-    document.querySelectorAll(".teacher-only").forEach((el) => (el.style.display = "none"));
+    document
+      .querySelectorAll(".teacher-only")
+      .forEach((el) => (el.style.display = "none"));
     const tSub = document.getElementById("teacher-only-submissions");
     if (tSub) tSub.style.display = "none";
   } else {
@@ -185,7 +278,6 @@ function initDashboardPage() {
     });
   }
 
-  // Navigation between sections
   const navBtns = document.querySelectorAll(".nav-btn");
   const views = document.querySelectorAll(".view");
 
@@ -209,7 +301,6 @@ function initDashboardPage() {
     });
   });
 
-  // Initial loads
   loadDashboardSummary();
   loadCourses();
   loadAssignments();
@@ -218,9 +309,12 @@ function initDashboardPage() {
   initCoursesSection(user);
   initAssignmentsSection(user);
   initProfileSection(user);
+
+  // password toggle for profile change form
+  initPasswordToggles();
 }
 
-// =================== DASHBOARD SUMMARY ===================
+// ================== DASHBOARD SUMMARY ==================
 async function loadDashboardSummary() {
   try {
     const data = await api("/api/dashboard/summary");
@@ -247,7 +341,9 @@ async function loadDashboardSummary() {
             card.className = "assignment-card";
             card.innerHTML = `
               <h4>${a.title}</h4>
-              <span class="small">Due: ${new Date(a.dueDate).toLocaleString()}</span>
+              <span class="small">Due: ${new Date(
+                a.dueDate
+              ).toLocaleString()}</span>
             `;
             list.appendChild(card);
           });
@@ -265,7 +361,7 @@ async function loadDashboardSummary() {
   }
 }
 
-// =================== COURSES ===================
+// ================== COURSES ==================
 let cachedCourses = [];
 
 async function loadCourses() {
@@ -359,7 +455,13 @@ function initCoursesSection(user) {
     refreshBtn.addEventListener("click", loadCourses);
   }
 
-  if (user.role === "teacher" && createBtn) {
+  // 🔒 Only admin email can create courses (front-end lock)
+  if (
+    user.role === "teacher" &&
+    user.email === ADMIN_COURSE_EMAIL &&
+    createBtn
+  ) {
+    createBtn.style.display = "inline-flex"; // make sure visible
     createBtn.addEventListener("click", () => {
       openModal("Create course", (body, close) => {
         body.innerHTML = `
@@ -372,8 +474,12 @@ function initCoursesSection(user) {
           <p class="hint">You will be set as the course teacher.</p>
         `;
         return async () => {
-          const name = document.getElementById("modal-course-name").value.trim();
-          const code = document.getElementById("modal-course-code").value.trim();
+          const name = document
+            .getElementById("modal-course-name")
+            .value.trim();
+          const code = document
+            .getElementById("modal-course-code")
+            .value.trim();
           const description = document
             .getElementById("modal-course-desc")
             .value.trim();
@@ -390,10 +496,13 @@ function initCoursesSection(user) {
         };
       });
     });
+  } else if (createBtn) {
+    // hide button for everyone else
+    createBtn.style.display = "none";
   }
 }
 
-// =================== ASSIGNMENTS ===================
+// ================== ASSIGNMENTS ==================
 let cachedAssignments = [];
 
 async function loadAssignments() {
@@ -476,6 +585,7 @@ function initAssignmentsSection(user) {
     refreshBtn.addEventListener("click", loadAssignments);
   }
 
+  // Any teacher can create assignments for their own courses (backend enforces ownership)
   if (user.role === "teacher" && createBtn) {
     createBtn.addEventListener("click", async () => {
       const myCourses = await api("/api/my-courses");
@@ -500,12 +610,18 @@ function initAssignmentsSection(user) {
           <input type="number" id="modal-assignment-max" value="100">
         `;
         return async () => {
-          const courseId = document.getElementById("modal-assignment-course").value;
-          const title = document.getElementById("modal-assignment-title").value.trim();
+          const courseId = document.getElementById(
+            "modal-assignment-course"
+          ).value;
+          const title = document
+            .getElementById("modal-assignment-title")
+            .value.trim();
           const description = document
             .getElementById("modal-assignment-desc")
             .value.trim();
-          const dueLocal = document.getElementById("modal-assignment-due").value;
+          const dueLocal = document.getElementById(
+            "modal-assignment-due"
+          ).value;
           const maxMarks = parseInt(
             document.getElementById("modal-assignment-max").value,
             10
@@ -514,7 +630,13 @@ function initAssignmentsSection(user) {
           try {
             await api("/api/assignments", {
               method: "POST",
-              body: JSON.stringify({ courseId, title, description, dueDate, maxMarks })
+              body: JSON.stringify({
+                courseId,
+                title,
+                description,
+                dueDate,
+                maxMarks
+              })
             });
             close();
             loadAssignments();
@@ -533,11 +655,30 @@ function openSubmitAssignmentModal(assignment) {
       <p class="small">${assignment.title} — ${assignment.course.name}</p>
       <label>Upload files (pdf, images, doc/xls)</label>
       <input type="file" id="modal-files" multiple>
+      <div id="modal-files-preview" class="small hint"></div>
       <p class="hint">You can add more files later; previous ones remain.</p>
     `;
+
+    // Live preview of selected files (names only)
+    const input = body.querySelector("#modal-files");
+    const preview = body.querySelector("#modal-files-preview");
+
+    if (input && preview) {
+      input.addEventListener("change", () => {
+        const files = Array.from(input.files || []);
+        if (!files.length) {
+          preview.textContent = "No files selected yet.";
+          return;
+        }
+        preview.innerHTML = files
+          .map((f) => `• ${f.name} (${Math.round(f.size / 1024)} KB)`)
+          .join("<br>");
+      });
+    }
+
     return async () => {
-      const input = document.getElementById("modal-files");
-      const files = input.files;
+      const inputDom = document.getElementById("modal-files");
+      const files = inputDom?.files;
       if (!files || files.length === 0) {
         alert("Select at least one file.");
         return;
@@ -587,9 +728,10 @@ function openGradeModal(assignment) {
         const div = document.createElement("div");
         div.className = "assignment-card";
 
-        // Use Cloudinary URL returned by backend
         const filesLinks = s.files
-          .map((f) => `<a href="${f.url}" target="_blank">${f.originalName}</a>`)
+          .map(
+            (f) => `<a href="${f.url}" target="_blank">${f.originalName}</a>`
+          )
           .join("<br>");
 
         div.innerHTML = `
@@ -625,7 +767,9 @@ function openGradeModal(assignment) {
 
     return async () => {
       const marksInputs = Array.from(document.querySelectorAll(".grade-marks"));
-      const feedbackInputs = Array.from(document.querySelectorAll(".grade-feedback"));
+      const feedbackInputs = Array.from(
+        document.querySelectorAll(".grade-feedback")
+      );
 
       for (const mi of marksInputs) {
         const studentId = mi.dataset.studentId;
@@ -657,7 +801,7 @@ function openGradeModal(assignment) {
   });
 }
 
-// =================== MESSAGES ===================
+// ================== MESSAGES ==================
 async function initMessagesView() {
   const select = document.getElementById("messages-course-select");
   const container = document.getElementById("messages-container");
@@ -680,7 +824,9 @@ async function initMessagesView() {
         div.className = "message";
         div.innerHTML = `
           <div class="message-header">
-            ${m.userName} • ${m.userRole} • ${new Date(m.createdAt).toLocaleString()}
+            ${m.userName} • ${m.userRole} • ${new Date(
+              m.createdAt
+            ).toLocaleString()}
           </div>
           <div class="message-content">${m.content}</div>
         `;
@@ -717,7 +863,7 @@ async function initMessagesView() {
   });
 }
 
-// =================== PROFILE ===================
+// ================== PROFILE ==================
 async function loadProfile() {
   try {
     const data = await api("/api/me");
@@ -754,11 +900,19 @@ function initProfileSection(user) {
     if (message) message.textContent = "";
 
     const name = document.getElementById("profile-name").value.trim();
-    const branchDept = document.getElementById("profile-branch-dept").value.trim();
+    const branchDept = document
+      .getElementById("profile-branch-dept")
+      .value.trim();
     const year = document.getElementById("profile-year").value.trim();
-    const profilePhotoUrl = document.getElementById("profile-photo").value.trim();
-    const currentPassword = document.getElementById("profile-current-password").value;
-    const newPassword = document.getElementById("profile-new-password").value;
+    const profilePhotoUrl = document
+      .getElementById("profile-photo")
+      .value.trim();
+    const currentPassword = document.getElementById(
+      "profile-current-password"
+    ).value;
+    const newPassword = document.getElementById(
+      "profile-new-password"
+    ).value;
 
     const payload = { name, profilePhotoUrl };
 
@@ -789,7 +943,7 @@ function initProfileSection(user) {
   });
 }
 
-// =================== STUDY MATERIALS ===================
+// ================== STUDY MATERIALS ==================
 async function initMaterialsView() {
   const courseSelect = document.getElementById("materials-course-select");
   const materialsList = document.getElementById("materials-list");
@@ -841,11 +995,29 @@ async function initMaterialsView() {
         body.innerHTML = `
           <label>Select file(s)</label>
           <input type="file" id="materialFiles" multiple>
+          <div id="material-files-preview" class="small hint"></div>
         `;
+
+        const input = body.querySelector("#materialFiles");
+        const preview = body.querySelector("#material-files-preview");
+
+        if (input && preview) {
+          input.addEventListener("change", () => {
+            const files = Array.from(input.files || []);
+            if (!files.length) {
+              preview.textContent = "No files selected yet.";
+              return;
+            }
+            preview.innerHTML = files
+              .map((f) => `• ${f.name} (${Math.round(f.size / 1024)} KB)`)
+              .join("<br>");
+          });
+        }
+
         return async () => {
-          const input = document.getElementById("materialFiles");
-          const files = input.files;
-          if (!files.length) {
+          const inputDom = document.getElementById("materialFiles");
+          const files = inputDom?.files;
+          if (!files || !files.length) {
             alert("Select at least one file.");
             return;
           }
@@ -878,7 +1050,45 @@ async function initMaterialsView() {
   }
 }
 
-// =================== MODAL HELPER ===================
+// ================== PASSWORD TOGGLE (EYE ICON) ==================
+function attachPasswordToggle(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.dataset.hasToggle === "1") return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "password-wrapper";
+
+  // Insert wrapper before input, then move input inside
+  const parent = input.parentNode;
+  parent.insertBefore(wrapper, input);
+  wrapper.appendChild(input);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "toggle-password-btn";
+  btn.textContent = "👁";
+
+  btn.addEventListener("click", () => {
+    const isPwd = input.type === "password";
+    input.type = isPwd ? "text" : "password";
+    btn.textContent = isPwd ? "🙈" : "👁";
+  });
+
+  wrapper.appendChild(btn);
+  input.dataset.hasToggle = "1";
+}
+
+function initPasswordToggles() {
+  attachPasswordToggle("login-password");
+  attachPasswordToggle("signup-password");
+  attachPasswordToggle("profile-current-password");
+  attachPasswordToggle("profile-new-password");
+  attachPasswordToggle("reset-new-password");
+  attachPasswordToggle("reset-confirm-password");
+}
+
+// ================== MODAL HELPER ==================
 function openModal(title, buildFn) {
   const modal = document.getElementById("modal");
   const modalTitle = document.getElementById("modal-title");
