@@ -93,6 +93,38 @@ body.bg {
   display: block;
 }
 
+/* ✨ NEW: Password wrapper for eye icon */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.eye-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 14px;
+}
+.eye-toggle:hover {
+  opacity: 1;
+}
+
+/* ✨ NEW: Forgot password link */
+#forgot-password {
+  font-size: 12px;
+  text-align: right;
+  margin-top: -4px;
+  margin-bottom: 8px;
+  color: #4de5ff;
+  cursor: pointer;
+}
+#forgot-password:hover {
+  text-decoration: underline;
+}
+
 label {
   display: block;
   font-size: 12px;
@@ -127,6 +159,7 @@ input:focus, select:focus {
   display: none !important;
 }
 
+/* Buttons */
 .btn-primary,
 .btn-primary-small {
   border: none;
@@ -184,7 +217,7 @@ input:focus, select:focus {
   color: #ff6b9b;
 }
 
-/* Dashboard layout */
+/* Dashboard */
 .topbar {
   position: fixed;
   top: 10px;
@@ -288,6 +321,7 @@ input:focus, select:focus {
 .view-header h3 {
   font-size: 16px;
 }
+
 .view-actions {
   display: flex;
   align-items: center;
@@ -300,6 +334,7 @@ input:focus, select:focus {
   gap: 10px;
   margin-top: 10px;
 }
+
 .card {
   background: radial-gradient(circle at top left, #4451ff33, #050415);
   border-radius: 14px;
@@ -335,11 +370,13 @@ input:focus, select:focus {
   gap: 6px;
   font-size: 12px;
 }
+
 .course-card h4,
 .assignment-card h4 {
   font-size: 14px;
   color: #d7ddff;
 }
+
 .tag {
   display: inline-block;
   font-size: 10px;
@@ -349,6 +386,7 @@ input:focus, select:focus {
   color: #98a0ff;
   margin-right: 6px;
 }
+
 .small {
   font-size: 11px;
   color: #8e96d5;
@@ -374,10 +412,6 @@ input:focus, select:focus {
 .message-content {
   font-size: 13px;
   color: #dde2ff;
-}
-.message-meta {
-  font-size: 10px;
-  color: #666eac;
 }
 
 .message-form {
