@@ -4,7 +4,36 @@
   <meta charset="UTF-8">
   <title>Neon Student Portal</title>
   <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* Eye icon styling */
+    .password-wrapper {
+      position: relative;
+    }
+    .eye-toggle {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0.7;
+    }
+    .eye-toggle:hover { opacity: 1; }
+    #forgot-password {
+      margin-top: -5px;
+      margin-bottom: 12px;
+      text-align: right;
+      cursor: pointer;
+      font-size: 13px;
+      color: #4de5ff;
+    }
+    #forgot-password:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
+
 <body class="bg">
   <div class="stars"></div>
   <div class="glow-orb"></div>
@@ -12,7 +41,7 @@
   <div class="auth-container">
     <div class="brand">
       <h1>Neon<span>Campus</span></h1>
-      <p>Futuristic student-teacher hub for 250 humans.</p>
+      <p>Futuristic student–teacher hub for 250 humans.</p>
     </div>
 
     <div class="tabs">
@@ -20,9 +49,10 @@
       <button class="tab-btn" data-tab="signup">Sign up</button>
     </div>
 
-    <!-- Login form -->
+    <!-- LOGIN TAB -->
     <div class="tab-content active" id="login-tab">
       <form id="login-form">
+
         <label>Role</label>
         <select id="login-role">
           <option value="student">Student</option>
@@ -30,20 +60,27 @@
         </select>
 
         <label>Roll no (student) / Email (teacher)</label>
-        <input type="text" id="login-identifier" placeholder="e.g., 25WU0801001 or Sheldon_2028woxsen.edu.in" required>
+        <input type="text" id="login-identifier" placeholder="25WU0801001 or David_2028@woxsen.edu.in" required>
 
         <label>Password</label>
-        <input type="password" id="login-password" required>
+        <div class="password-wrapper">
+          <input type="password" id="login-password" required>
+          <span class="eye-toggle" data-target="login-password">👁️</span>
+        </div>
+
+        <div id="forgot-password">Forgot password?</div>
 
         <button type="submit" class="btn-primary">Login</button>
         <p class="hint">Use the same portal for both students and teachers.</p>
         <p id="login-error" class="error"></p>
+
       </form>
     </div>
 
-    <!-- Signup form -->
+    <!-- SIGNUP TAB -->
     <div class="tab-content" id="signup-tab">
       <form id="signup-form">
+
         <label>Role</label>
         <select id="signup-role">
           <option value="student">Student</option>
@@ -61,6 +98,7 @@
           </div>
         </div>
 
+        <!-- STUDENT FIELDS -->
         <div id="student-extra">
           <div class="two-col">
             <div>
@@ -74,20 +112,42 @@
           </div>
         </div>
 
+        <!-- TEACHER FIELDS -->
         <div id="teacher-extra" class="hidden">
-          <label>Email (for teacher login)</label>
-          <input type="email" id="signup-email" placeholder="Sheldon_2028@woxsen.edu.in">
+          <label>Email (teacher login)</label>
+          <input type="email" id="signup-email" placeholder="David_2028@woxsen.edu.in">
         </div>
 
         <label>Password</label>
-        <input type="password" id="signup-password" required>
+        <div class="password-wrapper">
+          <input type="password" id="signup-password" required>
+          <span class="eye-toggle" data-target="signup-password">👁️</span>
+        </div>
 
         <button type="submit" class="btn-primary">Create account</button>
-        <p class="hint">Students login via roll number. Teachers login via email.</p>
+
+        <p class="hint">Students login using roll number. Teachers login using email.</p>
         <p id="signup-error" class="error"></p>
+
       </form>
     </div>
   </div>
+
+  <script>
+    // Password show/hide
+    document.addEventListener("click", (e) => {
+      if (e.target.classList.contains("eye-toggle")) {
+        const id = e.target.dataset.target;
+        const input = document.getElementById(id);
+        input.type = input.type === "password" ? "text" : "password";
+      }
+    });
+
+    // Forgot password placeholder (real backend coming later)
+    document.getElementById("forgot-password").addEventListener("click", () => {
+      alert("Forgot Password feature will be added after backend update.");
+    });
+  </script>
 
   <script src="script.js"></script>
 </body>
