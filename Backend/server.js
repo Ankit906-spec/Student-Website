@@ -151,9 +151,7 @@ const Message = mongoose.model("Message", messageSchema);
 
 // Upload a single file buffer to Cloudinary and return meta
 async function uploadToCloudinary(file, folder) {
-  const base64 = `data:${file.mimetype};base64,${file.buffer.toString(
-    "base64"
-  )}`;
+  const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
   const result = await cloudinary.uploader.upload(base64, {
     folder: folder || "student-portal",
     resource_type: "auto",
@@ -486,6 +484,7 @@ app.get("/api/my-courses", authMiddleware, async (req, res) => {
   const teacherMap = new Map(teachers.map((t) => [t.id, t.name]));
 
   const result = courses.map((c) => ({
+
     ...c.toObject(),
     teacherName: c.teacherId ? teacherMap.get(c.teacherId) : null,
     studentCount: c.students.length,
@@ -806,6 +805,11 @@ app.post(
           return res.status(403).json({
             message: "You are not the teacher of this course",
           });
+        }
+
+        // 🔧 FIX: make sure materials array exists before pushing
+        if (!course.materials) {
+          course.materials = [];
         }
 
         const uploadedFiles = [];
