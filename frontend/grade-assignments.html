@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Grade Assignments</title>
+  <style>
+    body { font-family: Arial; background:#f5f5f5; }
+    .box { max-width:900px; margin:30px auto; background:#fff; padding:20px; }
+    select, input, textarea, button {
+      width:100%; padding:8px; margin-top:8px;
+    }
+    .submission {
+      border:1px solid #ddd;
+      padding:12px;
+      margin-top:12px;
+    }
+    .files a { display:block; }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>Grade Assignments</h2>
+
+  <select id="courseSelect">
+    <option value="">Select course</option>
+  </select>
+
+  <select id="assignmentSelect">
+    <option value="">Select assignment</option>
+  </select>
+
+  <div id="submissions"></div>
+</div>
+
+<script>
+  const token = localStorage.getItem("token");
+  const courseSelect = document.getElementById("courseSelect");
+  const assignmentSelect = document.getElementById("assignmentSelect");
+  const submissionsDiv = document.getElementById("submissions");
+
+  // Load teacher courses
+  fetch("/api/my-courses", {
+    headers: { Authorization: "Bearer " + token }
+  })
+  .then(res => res.json())
+  .then(courses => {
+    courses.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.name;
+      courseSelect.appendChild(opt);
+    });
+  });
+
+  // Load assignments
+  courseSelect.addEventListener("change", async () => {
+    assignmentSelect.innerHTML = "<option value=''>Select assignment</option>";
+    submissionsDiv.innerHTML = "";
+    if (!courseSelect.value) return;
+
+    const res = await fetch(
+      `/api/courses/${courseSelect.value}/assignments`,
+      { headers: { Authorization: "Bearer " + token } }
+    );
+    const assignments = await res.json();
+
+    assignments.forEach(a => {
+      const opt = document.createElement("option");
+      opt.value = a.id;
+      opt.textContent = a.title;
+      assignmentSelect.appendChild(opt);
+    });
+  });
+
+  // Load submissions
+  assignmentSelect.addEventListener("change", async () => {
+    submissionsDiv.innerHTML = "";
+    if (!assignmentSelect.value) return;
+
+    const res = await fetch(
+      `/api/assignments/${assignmentSelect.value}/submissions`,
+      { headers: { Authorization: "Bearer " + token } }
+    );
+
+    const data = await res.json();
+
+    data.submissions.forEach(s => {
+      const div = document.createElement("div");
+      div.className = "submission";
+
+      const filesHtml = s.files
+        .map(f => `<a href="${f.url}" target="_blank">View file</a>`)
+        .join("");
+
+      div.innerHTML = `
+        <strong>${s.studentName} (${s.rollNumber || ""})</strong><br/>
+        Late: ${s.isLate ? "Yes" : "No"}<br/>
+        <div class="files">${filesHtml}</div>
+
+        <input type="number" placeholder="Marks"
+          value="${s.marks ?? ""}"
+          id="marks-${s.studentId}" />
+
+        <textarea placeholder="Feedback"
+          id="feedback-${s.studentId}">${s.feedback || ""}</textarea>
+
+        <button onclick="grade('${s.studentId}')">Save Grade</button>
+      `;
+
+      submissionsDiv.appendChild(div);
+    });
+  });
+
+  async function grade(studentId) {
+    const marks = Number(document.getElementById(`marks-${studentId}`).value);
+    const feedback = document.getElementById(`feedback-${studentId}`).value;
+
+    const res = await fetch(
+      `/api/assignments/${assignmentSelect.value}/grade`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify({ studentId, marks, feedback })
+      }
+    );
+
+    if (res.ok) alert("✅ Saved");
+    else alert("Error saving grade");
+  }
+</script>
+
+</body>
+</html>
