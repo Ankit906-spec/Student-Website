@@ -20,7 +20,7 @@
       <button class="tab-btn" data-tab="signup">Sign up</button>
     </div>
 
-    <!-- Login form -->
+    <!-- Login -->
     <div class="tab-content active" id="login-tab">
       <form id="login-form">
         <label>Role</label>
@@ -30,10 +30,15 @@
         </select>
 
         <label>Roll no (student) / Email (teacher)</label>
-        <input type="text" id="login-identifier" placeholder="e.g., 25WU0801001 or Sheldon_2028woxsen.edu.in" required>
+        <input type="text" id="login-identifier" placeholder="25WU0801001 or Sheldon_2028@woxsen.edu.in" required>
 
         <label>Password</label>
         <input type="password" id="login-password" required>
+
+        <!-- 🔥 Reset password link (required by script.js) -->
+        <p id="forgot-password-link" style="text-align:right; font-size:12px; margin-top:-6px; cursor:pointer; color:#4de5ff;">
+          Forgot password?
+        </p>
 
         <button type="submit" class="btn-primary">Login</button>
         <p class="hint">Use the same portal for both students and teachers.</p>
@@ -41,7 +46,7 @@
       </form>
     </div>
 
-    <!-- Signup form -->
+    <!-- Signup -->
     <div class="tab-content" id="signup-tab">
       <form id="signup-form">
         <label>Role</label>
@@ -82,7 +87,9 @@
         <label>Password</label>
         <input type="password" id="signup-password" required>
 
-        <button type="submit" class="btn-primary">Create account</button>
+        <!-- 🔥 Required ID so script.js can trigger this -->
+        <button type="submit" id="btn-create-account" class="btn-primary">Create account</button>
+
         <p class="hint">Students login via roll number. Teachers login via email.</p>
         <p id="signup-error" class="error"></p>
       </form>
