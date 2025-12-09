@@ -1,45 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dashboard</title>
-  <style>
-    body { font-family: Arial; background:#f5f5f5; }
-    .container {
-      max-width: 700px;
-      margin: 40px auto;
-      background: #fff;
-      padding: 20px;
-    }
-    a {
-      display: block;
-      padding: 10px;
-      margin-top: 10px;
-      background: #2563eb;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-      text-align: center;
-    }
-    a:hover { background: #1e4ed8; }
-  </style>
+  <meta charset="UTF-8">
+  <title>Neon Student Portal</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="bg">
+  <div class="stars"></div>
+  <div class="glow-orb"></div>
 
-<div class="container">
-  <h2>Dashboard</h2>
+  <header class="topbar">
+    <div class="topbar-left">
+      <h2>Neon<span>Campus</span></h2>
+      <span id="user-role-badge" class="badge"></span>
+    </div>
+    <div class="topbar-right">
+      <span id="user-name"></span>
+      <button id="logout-btn" class="btn-outline">Logout</button>
+    </div>
+  </header>
 
-  <!-- Common -->
-  <a href="dashboard-summary.html">Dashboard Summary</a>
-  <a href="assignments.html">View Assignments</a>
+  <main class="layout">
+    <aside class="sidebar">
+      <button class="nav-btn active" data-view="overview">Overview</button>
+      <button class="nav-btn" data-view="courses">Courses</button>
+      <button class="nav-btn" data-view="assignments">Assignments</button>
+      <button class="nav-btn" data-view="messages">Course board</button>
+      <button class="nav-btn" data-view="materials">Study Materials</button>
+      <button class="nav-btn" data-view="profile">Profile</button>
+    </aside>
 
-  <!-- Teacher -->
-  <a href="create-assignment.html">Create Assignment (Teacher)</a>
-  <a href="grade-assignments.html">Grade Assignments (Teacher)</a>
+    <section class="content">
 
-  <!-- Student -->
-  <a href="submit-assignment.html">Submit Assignment (Student)</a>
-</div>
+      <!-- OVERVIEW -->
+      <div class="view active" id="view-overview">
+        <h3>Overview</h3>
+        <div class="cards">
+          <div class="card">
+            <h4>My courses</h4>
+            <p id="stat-courses">–</p>
+          </div>
+          <div class="card" id="student-only-pending">
+            <h4>Pending assignments</h4>
+            <p id="stat-pending">–</p>
+          </div>
+          <div class="card" id="teacher-only-submissions">
+            <h4>Submissions to grade</h4>
+            <p id="stat-to-grade">–</p>
+          </div>
+        </div>
+      </div>
 
+      <!-- COURSES -->
+      <div class="view" id="view-courses">
+        <h3>Courses</h3>
+        <input id="course-search" placeholder="Search courses">
+        <button id="btn-refresh-courses" class="btn-outline-small">Refresh</button>
+        <button id="btn-create-course" class="btn-primary-small teacher-only">
+          + Create course
+        </button>
+        <div id="courses-list" class="grid"></div>
+      </div>
+
+      <!-- ASSIGNMENTS -->
+      <div class="view" id="view-assignments">
+        <h3>Assignments</h3>
+        <input id="assignment-search" placeholder="Search assignments">
+        <button id="btn-refresh-assignments" class="btn-outline-small">Refresh</button>
+        <button id="btn-create-assignment" class="btn-primary-small teacher-only">
+          + New assignment
+        </button>
+        <div id="assignments-list" class="grid"></div>
+      </div>
+
+      <!-- MESSAGES -->
+      <div class="view" id="view-messages">
+        <h3>Course discussion</h3>
+        <select id="messages-course-select"></select>
+        <div id="messages-container" class="messages"></div>
+        <form id="message-form">
+          <input id="message-input" placeholder="Type message">
+          <button class="btn-primary-small">Send</button>
+        </form>
+      </div>
+
+      <!-- MATERIALS -->
+      <div class="view" id="view-materials">
+        <h3>Study Materials</h3>
+        <select id="materials-course-select"></select>
+        <button id="btn-upload-material" class="btn-primary-small teacher-only">
+          Upload material
+        </button>
+        <div id="materials-list" class="grid"></div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="view" id="view-profile">
+        <h3>Profile</h3>
+        <form id="profile-form">
+          <input id="profile-name" placeholder="Name">
+          <input id="profile-role" disabled>
+          <input id="profile-roll" disabled>
+          <input id="profile-branch-dept" placeholder="Branch / Dept">
+          <input id="profile-year" placeholder="Year">
+          <input id="profile-email" disabled>
+          <input id="profile-photo" placeholder="Photo URL">
+
+          <input id="profile-current-password" type="password" placeholder="Current password">
+          <input id="profile-new-password" type="password" placeholder="New password">
+
+          <button class="btn-primary">Save</button>
+          <p id="profile-message"></p>
+        </form>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- MODAL -->
+  <div class="modal hidden" id="modal">
+    <div class="modal-content">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <button id="modal-cancel" class="btn-outline-small">Cancel</button>
+      <button id="modal-save" class="btn-primary-small">Save</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
