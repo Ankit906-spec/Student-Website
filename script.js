@@ -157,87 +157,11 @@ function initAuthPage() {
         if (signupError) signupError.textContent = err.message;
       }
     });
-
-    // "Create account" button should also trigger signup
-    const createAccountBtn = document.getElementById("btn-create-account");
-    if (createAccountBtn) {
-      createAccountBtn.addEventListener("click", () => {
-        signupForm.requestSubmit();
-      });
-    }
   }
 
-  // ----- Forgot password (frontend-only for now) -----
-  const forgotLink = document.getElementById("forgot-password-link");
-  if (forgotLink) {
-    forgotLink.addEventListener("click", () => {
-      openModal("Reset password", (body, close) => {
-        body.innerHTML = `
-          <p class="small">
-            Enter your details to request a password reset.
-            (This requires backend support – if it fails, contact the site admin.)
-          </p>
-          <label>Role</label>
-          <select id="reset-role">
-            <option value="student">Student</option>
-            <option value="teacher">Teacher</option>
-          </select>
-          <label>Roll number or email</label>
-          <input type="text" id="reset-identifier" placeholder="Roll no (student) or email (teacher)">
-          <label>New password</label>
-          <input type="password" id="reset-new-password">
-          <label>Confirm new password</label>
-          <input type="password" id="reset-confirm-password">
-        `;
-        // Add password toggle on these too
-        attachPasswordToggle("reset-new-password");
-        attachPasswordToggle("reset-confirm-password");
-
-        return async () => {
-          const role = document.getElementById("reset-role").value;
-          const identifier = document
-            .getElementById("reset-identifier")
-            .value.trim();
-          const newPassword = document
-            .getElementById("reset-new-password")
-            .value;
-          const confirm = document.getElementById(
-            "reset-confirm-password"
-          ).value;
-
-          if (!identifier || !newPassword || !confirm) {
-            alert("Please fill all fields.");
-            return;
-          }
-          if (newPassword !== confirm) {
-            alert("Passwords do not match.");
-            return;
-          }
-
-          try {
-            // NOTE: backend endpoint must be implemented later
-            await api("/api/auth/reset-password", {
-              method: "POST",
-              body: JSON.stringify({ role, identifier, newPassword })
-            });
-            alert("Password reset successful. You can now log in.");
-            close();
-          } catch (err) {
-            alert(
-              "Reset failed: " +
-                err.message +
-                "\nIf this keeps happening, contact the admin."
-            );
-          }
-        };
-      });
-    });
-  }
-
-  // ----- Password eye toggle -----
+  // Password visibility toggles
   initPasswordToggles();
 
-  // Already logged in?
   if (getToken() && getUser()) {
     window.location.href = "dashboard.html";
   }
@@ -264,19 +188,15 @@ function initDashboardPage() {
     document
       .querySelectorAll(".teacher-only")
       .forEach((el) => (el.style.display = "none"));
-    const tSub = document.getElementById("teacher-only-submissions");
-    if (tSub) tSub.style.display = "none";
+    document.getElementById("teacher-only-submissions").style.display = "none";
   } else {
-    const sPending = document.getElementById("student-only-pending");
-    if (sPending) sPending.style.display = "none";
+    document.getElementById("student-only-pending").style.display = "none";
   }
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      clearSession();
-      window.location.href = "index.html";
-    });
-  }
+  logoutBtn.addEventListener("click", () => {
+    clearSession();
+    window.location.href = "index.html";
+  });
 
   const navBtns = document.querySelectorAll(".nav-btn");
   const views = document.querySelectorAll(".view");
@@ -310,7 +230,6 @@ function initDashboardPage() {
   initAssignmentsSection(user);
   initProfileSection(user);
 
-  // password toggle for profile change form
   initPasswordToggles();
 }
 
@@ -321,40 +240,15 @@ async function loadDashboardSummary() {
     const user = getUser();
     if (!user) return;
 
-    const coursesStat = document.getElementById("stat-courses");
-    if (coursesStat) coursesStat.textContent = data.myCoursesCount ?? "0";
+    document.getElementById("stat-courses").textContent =
+      data.myCoursesCount ?? "0";
 
     if (user.role === "student") {
-      const pendingSpan = document.getElementById("stat-pending");
-      if (pendingSpan) {
-        pendingSpan.textContent = data.pendingAssignmentsCount ?? "0";
-      }
-
-      const extra = document.getElementById("overview-extra");
-      if (extra) {
-        extra.innerHTML = "";
-        if (data.pendingAssignments && data.pendingAssignments.length > 0) {
-          const list = document.createElement("div");
-          list.className = "grid";
-          data.pendingAssignments.slice(0, 3).forEach((a) => {
-            const card = document.createElement("div");
-            card.className = "assignment-card";
-            card.innerHTML = `
-              <h4>${a.title}</h4>
-              <span class="small">Due: ${new Date(
-                a.dueDate
-              ).toLocaleString()}</span>
-            `;
-            list.appendChild(card);
-          });
-          extra.appendChild(list);
-        }
-      }
+      document.getElementById("stat-pending").textContent =
+        data.pendingAssignmentsCount ?? "0";
     } else {
-      const toGradeSpan = document.getElementById("stat-to-grade");
-      if (toGradeSpan) {
-        toGradeSpan.textContent = data.submissionsToGradeCount ?? "0";
-      }
+      document.getElementById("stat-to-grade").textContent =
+        data.submissionsToGradeCount ?? "0";
     }
   } catch (err) {
     console.error("Dashboard summary error:", err);
@@ -366,9 +260,10 @@ let cachedCourses = [];
 
 async function loadCourses() {
   try {
-    const search = document.getElementById("course-search");
-    const q = search ? search.value.trim() : "";
-    const res = await api("/api/courses" + (q ? `?q=${encodeURIComponent(q)}` : ""));
+    const search = document.getElementById("course-search")?.value.trim() || "";
+    const res = await api(
+      "/api/courses" + (search ? `?q=${encodeURIComponent(search)}` : "")
+    );
     cachedCourses = res;
     renderCourses();
   } catch (err) {
@@ -382,6 +277,7 @@ function renderCourses() {
   if (!container || !user) return;
 
   container.innerHTML = "";
+
   cachedCourses.forEach((c) => {
     const card = document.createElement("div");
     card.className = "course-card";
@@ -390,16 +286,13 @@ function renderCourses() {
       <div class="small">${c.code}</div>
       <div class="small">${c.description || ""}</div>
       <div class="small">Teacher: ${c.teacherName || "Not assigned"}</div>
-      <div class="small">Students: ${c.studentCount ?? c.students?.length ?? 0}</div>
-      <div class="small">
-        <span class="tag">Course ID</span> ${c.id}
-      </div>
+      <div class="small">Students: ${c.studentCount ?? 0}</div>
+      <div class="small"><span class="tag">Course ID</span> ${c.id}</div>
       <div class="small" id="course-actions-${c.id}"></div>
     `;
     container.appendChild(card);
 
     const actions = card.querySelector(`#course-actions-${c.id}`);
-    if (!actions) return;
 
     if (user.role === "student") {
       const isJoined = (c.students || []).includes(user.id);
@@ -409,13 +302,6 @@ function renderCourses() {
       btn.disabled = isJoined;
       btn.addEventListener("click", () => joinCourse(c.id));
       actions.appendChild(btn);
-    } else {
-      if (!c.teacherId || c.teacherId === user.id) {
-        const tag = document.createElement("span");
-        tag.className = "tag";
-        tag.textContent = c.teacherId ? "My course" : "Unassigned";
-        actions.appendChild(tag);
-      }
     }
   });
 }
@@ -451,17 +337,15 @@ function initCoursesSection(user) {
     });
   }
 
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", loadCourses);
-  }
+  if (refreshBtn) refreshBtn.addEventListener("click", loadCourses);
 
-  // 🔒 Only admin email can create courses (front-end lock)
+  // Only the admin email can create courses
   if (
     user.role === "teacher" &&
     user.email === ADMIN_COURSE_EMAIL &&
     createBtn
   ) {
-    createBtn.style.display = "inline-flex"; // make sure visible
+    createBtn.style.display = "inline-flex";
     createBtn.addEventListener("click", () => {
       openModal("Create course", (body, close) => {
         body.innerHTML = `
@@ -471,7 +355,6 @@ function initCoursesSection(user) {
           <input type="text" id="modal-course-code">
           <label>Description</label>
           <input type="text" id="modal-course-desc">
-          <p class="hint">You will be set as the course teacher.</p>
         `;
         return async () => {
           const name = document
@@ -483,6 +366,7 @@ function initCoursesSection(user) {
           const description = document
             .getElementById("modal-course-desc")
             .value.trim();
+
           try {
             await api("/api/courses", {
               method: "POST",
@@ -497,7 +381,6 @@ function initCoursesSection(user) {
       });
     });
   } else if (createBtn) {
-    // hide button for everyone else
     createBtn.style.display = "none";
   }
 }
@@ -509,12 +392,12 @@ async function loadAssignments() {
   try {
     const myCourses = await api("/api/my-courses");
     const all = [];
+
     for (const c of myCourses) {
       const assignments = await api(`/api/courses/${c.id}/assignments`);
-      assignments.forEach((a) => {
-        all.push({ ...a, course: c });
-      });
+      assignments.forEach((a) => all.push({ ...a, course: c }));
     }
+
     cachedAssignments = all;
     renderAssignments();
   } catch (err) {
@@ -528,6 +411,7 @@ function renderAssignments() {
   if (!container || !user) return;
 
   container.innerHTML = "";
+
   cachedAssignments.forEach((a) => {
     const card = document.createElement("div");
     card.className = "assignment-card";
@@ -542,7 +426,6 @@ function renderAssignments() {
     container.appendChild(card);
 
     const actions = card.querySelector(`#assignment-actions-${a.id}`);
-    if (!actions) return;
 
     if (user.role === "student") {
       const btn = document.createElement("button");
@@ -550,12 +433,6 @@ function renderAssignments() {
       btn.textContent = "Submit / Add files";
       btn.addEventListener("click", () => openSubmitAssignmentModal(a));
       actions.appendChild(btn);
-    } else {
-      const viewBtn = document.createElement("button");
-      viewBtn.className = "btn-outline-small";
-      viewBtn.textContent = "View submissions";
-      viewBtn.addEventListener("click", () => openGradeModal(a));
-      actions.appendChild(viewBtn);
     }
   });
 }
@@ -581,22 +458,21 @@ function initAssignmentsSection(user) {
     });
   }
 
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", loadAssignments);
-  }
+  if (refreshBtn) refreshBtn.addEventListener("click", loadAssignments);
 
-  // Any teacher can create assignments for their own courses (backend enforces ownership)
   if (user.role === "teacher" && createBtn) {
     createBtn.addEventListener("click", async () => {
       const myCourses = await api("/api/my-courses");
-      if (myCourses.length === 0) {
-        alert("You have no courses yet. Create a course first.");
+      if (!myCourses.length) {
+        alert("You have no courses.");
         return;
       }
+
       openModal("Create assignment", (body, close) => {
         const options = myCourses
           .map((c) => `<option value="${c.id}">${c.name} (${c.code})</option>`)
           .join("");
+
         body.innerHTML = `
           <label>Course</label>
           <select id="modal-assignment-course">${options}</select>
@@ -604,29 +480,24 @@ function initAssignmentsSection(user) {
           <input type="text" id="modal-assignment-title">
           <label>Description</label>
           <input type="text" id="modal-assignment-desc">
-          <label>Due date & time</label>
+          <label>Due date</label>
           <input type="datetime-local" id="modal-assignment-due">
           <label>Max marks</label>
           <input type="number" id="modal-assignment-max" value="100">
         `;
+
         return async () => {
-          const courseId = document.getElementById(
-            "modal-assignment-course"
-          ).value;
-          const title = document
-            .getElementById("modal-assignment-title")
-            .value.trim();
-          const description = document
-            .getElementById("modal-assignment-desc")
-            .value.trim();
-          const dueLocal = document.getElementById(
-            "modal-assignment-due"
-          ).value;
+          const courseId = document.getElementById("modal-assignment-course").value;
+          const title = document.getElementById("modal-assignment-title").value.trim();
+          const description = document.getElementById("modal-assignment-desc").value.trim();
+          const dueLocal = document.getElementById("modal-assignment-due").value;
           const maxMarks = parseInt(
             document.getElementById("modal-assignment-max").value,
             10
           );
+
           const dueDate = dueLocal ? new Date(dueLocal).toISOString() : null;
+
           try {
             await api("/api/assignments", {
               method: "POST",
@@ -649,63 +520,43 @@ function initAssignmentsSection(user) {
   }
 }
 
+// ================== SUBMIT ASSIGNMENT ==================
 function openSubmitAssignmentModal(assignment) {
   openModal("Submit assignment", (body, close) => {
     body.innerHTML = `
       <p class="small">${assignment.title} — ${assignment.course.name}</p>
-      <label>Upload files (pdf, images, doc/xls)</label>
+      <label>Upload files</label>
       <input type="file" id="modal-files" multiple>
       <div id="modal-files-preview" class="small hint"></div>
-      <p class="hint">You can add more files later; previous ones remain.</p>
     `;
 
-    // Live preview of selected files (names only)
     const input = body.querySelector("#modal-files");
     const preview = body.querySelector("#modal-files-preview");
 
-    if (input && preview) {
-      input.addEventListener("change", () => {
-        const files = Array.from(input.files || []);
-        if (!files.length) {
-          preview.textContent = "No files selected yet.";
-          return;
-        }
-        preview.innerHTML = files
-          .map((f) => `• ${f.name} (${Math.round(f.size / 1024)} KB)`)
-          .join("<br>");
-      });
-    }
+    input.addEventListener("change", () => {
+      const files = Array.from(input.files);
+      preview.innerHTML = files
+        .map((f) => `• ${f.name} (${Math.round(f.size / 1024)} KB)`)
+        .join("<br>");
+    });
 
     return async () => {
-      const inputDom = document.getElementById("modal-files");
-      const files = inputDom?.files;
-      if (!files || files.length === 0) {
+      const files = document.getElementById("modal-files").files;
+
+      if (!files.length) {
         alert("Select at least one file.");
         return;
       }
 
       const formData = new FormData();
-      for (let i = 0; i < files.length; i++) {
-        formData.append("files", files[i]);
-      }
+      for (const f of files) formData.append("files", f);
 
-      const token = getToken();
       try {
-        const res = await fetch(
-          `${API_BASE}/api/assignments/${assignment.id}/submit`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: "Bearer " + token
-            },
-            body: formData
-          }
-        );
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.message || "Upload failed");
-        }
-        await res.json();
+        await fetch(`${API_BASE}/api/assignments/${assignment.id}/submit`, {
+          method: "POST",
+          headers: { Authorization: "Bearer " + getToken() },
+          body: formData
+        });
         close();
         alert("Submission uploaded.");
       } catch (err) {
@@ -715,97 +566,13 @@ function openSubmitAssignmentModal(assignment) {
   });
 }
 
-function openGradeModal(assignment) {
-  openModal("Grade submissions", async (body, close) => {
-    body.innerHTML = `<p class="small">Loading submissions...</p>`;
-    try {
-      const data = await api(`/api/assignments/${assignment.id}/submissions`);
-      const list = document.createElement("div");
-      list.style.maxHeight = "280px";
-      list.style.overflowY = "auto";
-
-      data.submissions.forEach((s) => {
-        const div = document.createElement("div");
-        div.className = "assignment-card";
-
-        const filesLinks = s.files
-          .map(
-            (f) => `<a href="${f.url}" target="_blank">${f.originalName}</a>`
-          )
-          .join("<br>");
-
-        div.innerHTML = `
-          <div class="small">
-            <strong>${s.studentName}</strong> (${s.rollNumber || "roll?"})
-          </div>
-          <div class="small">Submitted: ${new Date(
-            s.submittedAt
-          ).toLocaleString()}</div>
-          <div class="small">${filesLinks}</div>
-          <div class="small">
-            Marks: <input type="number"
-              data-student-id="${s.studentId}"
-              class="grade-marks"
-              style="width:70px;"
-              value="${s.marks ?? ""}">
-          </div>
-          <div class="small">
-            Feedback: <input type="text"
-              data-student-id="${s.studentId}"
-              class="grade-feedback"
-              style="width:95%;">
-          </div>
-        `;
-        list.appendChild(div);
-      });
-
-      body.innerHTML = "";
-      body.appendChild(list);
-    } catch (err) {
-      body.innerHTML = `<p class="error">${err.message}</p>`;
-    }
-
-    return async () => {
-      const marksInputs = Array.from(document.querySelectorAll(".grade-marks"));
-      const feedbackInputs = Array.from(
-        document.querySelectorAll(".grade-feedback")
-      );
-
-      for (const mi of marksInputs) {
-        const studentId = mi.dataset.studentId;
-        const marks = mi.value;
-        if (marks === "") continue;
-
-        const feedbackInput = feedbackInputs.find(
-          (fi) => fi.dataset.studentId === studentId
-        );
-        const feedback = feedbackInput ? feedbackInput.value : "";
-
-        try {
-          await api(`/api/assignments/${assignment.id}/grade`, {
-            method: "POST",
-            body: JSON.stringify({
-              studentId,
-              marks: parseInt(marks, 10),
-              feedback
-            })
-          });
-        } catch (err) {
-          alert("Error grading: " + err.message);
-        }
-      }
-
-      close();
-      loadDashboardSummary();
-    };
-  });
-}
-
-// ================== MESSAGES ==================
+// ================== MESSAGES (FIXED REFRESH BUTTON) ==================
 async function initMessagesView() {
   const select = document.getElementById("messages-course-select");
   const container = document.getElementById("messages-container");
   const form = document.getElementById("message-form");
+  const refreshBtn = document.getElementById("btn-refresh-messages");
+
   if (!select || !container || !form) return;
 
   const myCourses = await api("/api/my-courses");
@@ -816,7 +583,9 @@ async function initMessagesView() {
   async function loadMessages() {
     const courseId = select.value;
     container.innerHTML = "";
+
     if (!courseId) return;
+
     try {
       const messages = await api(`/api/courses/${courseId}/messages`);
       messages.forEach((m) => {
@@ -839,23 +608,25 @@ async function initMessagesView() {
   }
 
   select.addEventListener("change", loadMessages);
-  document
-    .getElementById("btn-refresh-courses")
-    ?.addEventListener("click", loadMessages);
+
+  // ⭐ FIXED: correct refresh button
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", loadMessages);
+  }
+
   await loadMessages();
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const input = document.getElementById("message-input");
-    const content = input.value.trim();
+    const content = document.getElementById("message-input").value.trim();
     if (!content) return;
-    const courseId = select.value;
+
     try {
-      await api(`/api/courses/${courseId}/messages`, {
+      await api(`/api/courses/${select.value}/messages`, {
         method: "POST",
         body: JSON.stringify({ content })
       });
-      input.value = "";
+      document.getElementById("message-input").value = "";
       await loadMessages();
     } catch (err) {
       alert("Error: " + err.message);
@@ -867,24 +638,15 @@ async function initMessagesView() {
 async function loadProfile() {
   try {
     const data = await api("/api/me");
-    const name = document.getElementById("profile-name");
-    const role = document.getElementById("profile-role");
-    const roll = document.getElementById("profile-roll");
-    const branchDept = document.getElementById("profile-branch-dept");
-    const year = document.getElementById("profile-year");
-    const email = document.getElementById("profile-email");
-    const photo = document.getElementById("profile-photo");
 
-    if (name) name.value = data.name || "";
-    if (role) role.value = data.role || "";
-    if (roll) roll.value = data.rollNumber || "";
-    if (branchDept) {
-      branchDept.value =
-        data.role === "student" ? data.branch || "" : data.department || "";
-    }
-    if (year) year.value = data.year || "";
-    if (email) email.value = data.email || "";
-    if (photo) photo.value = data.profilePhotoUrl || "";
+    document.getElementById("profile-name").value = data.name || "";
+    document.getElementById("profile-role").value = data.role || "";
+    document.getElementById("profile-roll").value = data.rollNumber || "";
+    document.getElementById("profile-branch-dept").value =
+      data.branch || data.department || "";
+    document.getElementById("profile-year").value = data.year || "";
+    document.getElementById("profile-email").value = data.email || "";
+    document.getElementById("profile-photo").value = data.profilePhotoUrl || "";
   } catch (err) {
     console.error("Profile load error:", err);
   }
@@ -893,35 +655,33 @@ async function loadProfile() {
 function initProfileSection(user) {
   const form = document.getElementById("profile-form");
   const message = document.getElementById("profile-message");
+
   if (!form) return;
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (message) message.textContent = "";
+    message.textContent = "";
 
-    const name = document.getElementById("profile-name").value.trim();
-    const branchDept = document
-      .getElementById("profile-branch-dept")
-      .value.trim();
-    const year = document.getElementById("profile-year").value.trim();
-    const profilePhotoUrl = document
-      .getElementById("profile-photo")
-      .value.trim();
+    const payload = {
+      name: document.getElementById("profile-name").value.trim(),
+      profilePhotoUrl: document.getElementById("profile-photo").value.trim()
+    };
+
+    if (user.role === "student") {
+      payload.branch = document
+        .getElementById("profile-branch-dept")
+        .value.trim();
+      payload.year = document.getElementById("profile-year").value.trim();
+    } else {
+      payload.department = document
+        .getElementById("profile-branch-dept")
+        .value.trim();
+    }
+
     const currentPassword = document.getElementById(
       "profile-current-password"
     ).value;
-    const newPassword = document.getElementById(
-      "profile-new-password"
-    ).value;
-
-    const payload = { name, profilePhotoUrl };
-
-    if (user.role === "student") {
-      payload.branch = branchDept;
-      payload.year = year;
-    } else {
-      payload.department = branchDept;
-    }
+    const newPassword = document.getElementById("profile-new-password").value;
 
     if (currentPassword && newPassword) {
       payload.currentPassword = currentPassword;
@@ -933,26 +693,25 @@ function initProfileSection(user) {
         method: "PUT",
         body: JSON.stringify(payload)
       });
-      if (message) message.textContent = "Profile updated.";
-      document.getElementById("profile-current-password").value = "";
-      document.getElementById("profile-new-password").value = "";
+      message.textContent = "Profile updated.";
       loadProfile();
     } catch (err) {
-      if (message) message.textContent = err.message;
+      message.textContent = err.message;
     }
   });
 }
 
-// ================== STUDY MATERIALS ==================
+// ================== MATERIALS ==================
 async function initMaterialsView() {
   const courseSelect = document.getElementById("materials-course-select");
   const materialsList = document.getElementById("materials-list");
   const uploadBtn = document.getElementById("btn-upload-material");
   const user = getUser();
 
-  if (!courseSelect || !materialsList || !user) return;
+  if (!courseSelect || !materialsList) return;
 
   const myCourses = await api("/api/my-courses");
+
   courseSelect.innerHTML = myCourses
     .map((c) => `<option value="${c.id}">${c.name} (${c.code})</option>`)
     .join("");
@@ -966,10 +725,10 @@ async function initMaterialsView() {
       return;
     }
 
-    const coursesDb = await api("/api/courses");
-    const course = coursesDb.find((c) => c.id === courseId);
+    const allCourses = await api("/api/courses");
+    const course = allCourses.find((c) => c.id === courseId);
 
-    if (!course || !course.materials || course.materials.length === 0) {
+    if (!course || !course.materials.length) {
       materialsList.innerHTML =
         "<p class='hint'>No study material uploaded yet.</p>";
       return;
@@ -980,7 +739,7 @@ async function initMaterialsView() {
       card.className = "assignment-card";
       card.innerHTML = `
         <h4>${m.originalName}</h4>
-        <a class="small" href="${m.url}" target="_blank">Download</a>
+        <a href="${m.url}" target="_blank" class="small">Download</a>
       `;
       materialsList.appendChild(card);
     });
@@ -989,9 +748,9 @@ async function initMaterialsView() {
   courseSelect.addEventListener("change", loadMaterials);
   await loadMaterials();
 
-  if (user.role === "teacher" && uploadBtn) {
+  if (user.role === "teacher") {
     uploadBtn.onclick = () => {
-      openModal("Upload Material", (body, close) => {
+      openModal("Upload material", (body, close) => {
         body.innerHTML = `
           <label>Select file(s)</label>
           <input type="file" id="materialFiles" multiple>
@@ -1001,65 +760,54 @@ async function initMaterialsView() {
         const input = body.querySelector("#materialFiles");
         const preview = body.querySelector("#material-files-preview");
 
-        if (input && preview) {
-          input.addEventListener("change", () => {
-            const files = Array.from(input.files || []);
-            if (!files.length) {
-              preview.textContent = "No files selected yet.";
-              return;
-            }
-            preview.innerHTML = files
-              .map((f) => `• ${f.name} (${Math.round(f.size / 1024)} KB)`)
-              .join("<br>");
-          });
-        }
+        input.addEventListener("change", () => {
+          const files = Array.from(input.files);
+          preview.innerHTML = files
+            .map((f) => `• ${f.name} (${Math.round(f.size / 1024)} KB)`)
+            .join("<br>");
+        });
 
         return async () => {
-          const inputDom = document.getElementById("materialFiles");
-          const files = inputDom?.files;
-          if (!files || !files.length) {
+          const files = document.getElementById("materialFiles").files;
+
+          if (!files.length) {
             alert("Select at least one file.");
             return;
           }
 
-          const courseId = courseSelect.value;
           const formData = new FormData();
-          for (let f of files) formData.append("files", f);
+          for (const f of files) formData.append("files", f);
 
           try {
-            const token = getToken();
-            const res = await fetch(
-              `${API_BASE}/api/courses/${courseId}/materials`,
+            await fetch(
+              `${API_BASE}/api/courses/${courseSelect.value}/materials`,
               {
                 method: "POST",
-                headers: { Authorization: "Bearer " + token },
+                headers: { Authorization: "Bearer " + getToken() },
                 body: formData
               }
             );
-            if (!res.ok) throw new Error("Upload failed");
             close();
-            await loadMaterials();
+            loadMaterials();
           } catch (e) {
             alert("Error: " + e.message);
           }
         };
       });
     };
-  } else if (uploadBtn) {
+  } else {
     uploadBtn.style.display = "none";
   }
 }
 
-// ================== PASSWORD TOGGLE (EYE ICON) ==================
+// ================== PASSWORD TOGGLE ==================
 function attachPasswordToggle(inputId) {
   const input = document.getElementById(inputId);
-  if (!input) return;
-  if (input.dataset.hasToggle === "1") return;
+  if (!input || input.dataset.hasToggle === "1") return;
 
   const wrapper = document.createElement("div");
   wrapper.className = "password-wrapper";
 
-  // Insert wrapper before input, then move input inside
   const parent = input.parentNode;
   parent.insertBefore(wrapper, input);
   wrapper.appendChild(input);
@@ -1080,23 +828,23 @@ function attachPasswordToggle(inputId) {
 }
 
 function initPasswordToggles() {
-  attachPasswordToggle("login-password");
-  attachPasswordToggle("signup-password");
-  attachPasswordToggle("profile-current-password");
-  attachPasswordToggle("profile-new-password");
-  attachPasswordToggle("reset-new-password");
-  attachPasswordToggle("reset-confirm-password");
+  [
+    "login-password",
+    "signup-password",
+    "profile-current-password",
+    "profile-new-password",
+    "reset-new-password",
+    "reset-confirm-password"
+  ].forEach((id) => attachPasswordToggle(id));
 }
 
-// ================== MODAL HELPER ==================
+// ================== MODAL ==================
 function openModal(title, buildFn) {
   const modal = document.getElementById("modal");
   const modalTitle = document.getElementById("modal-title");
   const modalBody = document.getElementById("modal-body");
   const btnCancel = document.getElementById("modal-cancel");
   const btnSave = document.getElementById("modal-save");
-
-  if (!modal || !modalTitle || !modalBody || !btnCancel || !btnSave) return;
 
   modalTitle.textContent = title;
   modalBody.innerHTML = "";
@@ -1107,16 +855,12 @@ function openModal(title, buildFn) {
   const close = () => {
     modal.classList.add("hidden");
     modalBody.innerHTML = "";
-    btnSave.onclick = null;
-    btnCancel.onclick = null;
   };
 
-  onSave = buildFn(modalBody, close, modal);
+  onSave = buildFn(modalBody, close);
 
   btnCancel.onclick = close;
   btnSave.onclick = async () => {
-    if (onSave) {
-      await onSave();
-    }
+    if (onSave) await onSave();
   };
 }
