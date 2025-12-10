@@ -127,6 +127,71 @@ function auth(req, res, next) {
     res.status(401).json({ message: "Invalid token" });
   }
 }
+// ================== USER SCHEMA ==================
+const userSchema = new mongoose.Schema({
+  id: String,
+  role: String,
+  name: String,
+  email: String,
+  rollNumber: String,
+  passwordHash: String,
+});
+
+const User = mongoose.model("User", userSchema);
+
+// ================== SIGNUP ==================
+app.post("/api/signup", async (req, res) => {
+  const { role, name, email, rollNumber, password } = req.body;
+
+  if (!role || !name || !password) {
+    return res.status(400).json({ message: "Missing fields" });
+  }
+
+  const bcrypt = (await import("bcryptjs")).default;
+  const hash = await bcrypt.hash(password, 10);
+
+  const user = new User({
+    id: uuidv4(),
+    role,
+    name,
+    email: email || null,
+    rollNumber: rollNumber || null,
+    passwordHash: hash,
+  });
+
+  await user.save();
+
+  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+
+  res.json({
+    token,
+    user: { id: user.id, role: user.role, name: user.name }
+  });
+});
+
+// ================== LOGIN ==================
+app.post("/api/login", async (req, res) => {
+  const { role, identifier, password } = req.body;
+
+  const bcrypt = (await import("bcryptjs")).default;
+
+  const user = role === "student"
+    ? await User.findOne({ rollNumber: identifier })
+    : await User.findOne({ email: identifier });
+
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return res.status(400).json({ message: "Wrong password" });
+
+  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+
+  res.json({
+    token,
+    user: { id: user.id, role: user.role, name: user.name }
+  });
+});
+
 
 // ================== CREATE ASSIGNMENT ==================
 app.post("/api/assignments", auth, async (req, res) => {
@@ -222,3 +287,4 @@ app.get("/", (_, res) => res.send("✅ Backend running"));
 app.listen(PORT, () =>
   console.log(`✅ Server running on port ${PORT}`)
 );
+
