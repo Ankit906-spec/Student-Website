@@ -1,6 +1,7 @@
 // ================== CONFIG ==================
 const API_BASE = "https://student-website-1-mx8v.onrender.com";
-  
+// const API_BASE = "http://localhost:4000";
+
 // ================== SESSION ==================
 function getToken() {
   return localStorage.getItem("token");
@@ -99,6 +100,7 @@ function initDashboardPage() {
     };
   }
 }
+
 
 // ================= TAB SWITCHING =================
 document.addEventListener("DOMContentLoaded", () => {
