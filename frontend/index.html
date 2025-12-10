@@ -1,145 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Neon Student Portal</title>
-  <link rel="stylesheet" href="style.css">
+<!-- LOGIN -->
+<div class="tab-content active" id="login-tab">
+  <form id="login-form">
 
-  <style>
-    .password-wrapper {
-      position: relative;
-    }
-    .eye-toggle {
-      position: absolute;
-      top: 50%;
-      right: 10px;
-      transform: translateY(-50%);
-      cursor: pointer;
-      font-size: 14px;
-      opacity: 0.7;
-    }
-    .eye-toggle:hover { opacity: 1; }
+    <label>Role</label>
+    <select id="login-role">
+      <option value="student">Student</option>
+      <option value="teacher">Teacher</option>
+    </select>
 
-    #forgot-password {
-      margin-top: -5px;
-      margin-bottom: 12px;
-      text-align: right;
-      cursor: pointer;
-      font-size: 13px;
-      color: #4de5ff;
-    }
-    #forgot-password:hover {
-      text-decoration: underline;
-    }
-  </style>
-</head>
+    <label>Roll no (student) / Email (teacher)</label>
+    <input
+      type="text"
+      id="login-identifier"
+      placeholder="25WU0801001 or david@college.edu"
+      required
+    >
 
-<body class="bg">
-  <div class="stars"></div>
-  <div class="glow-orb"></div>
-
-  <div class="auth-container">
-    <div class="brand">
-      <h1>Neon<span>Campus</span></h1>
-      <p>Futuristic student–teacher hub.</p>
+    <label>Password</label>
+    <div class="password-wrapper">
+      <input type="password" id="login-password" required>
+      <span class="eye-toggle" data-target="login-password">👁️</span>
     </div>
 
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="login">Login</button>
-      <button class="tab-btn" data-tab="signup">Sign up</button>
+    <div id="forgot-password">Forgot password?</div>
+
+    <button type="submit" class="btn-primary">Login</button>
+
+    <p id="login-error" class="error"></p>
+  </form>
+</div>
+
+<!-- SIGNUP -->
+<div class="tab-content" id="signup-tab">
+  <form id="signup-form">
+
+    <label>Role</label>
+    <select id="signup-role">
+      <option value="student">Student</option>
+      <option value="teacher">Teacher</option>
+    </select>
+
+    <label>Full name</label>
+    <input type="text" id="signup-name" required>
+
+    <label>Department / Branch</label>
+    <input type="text" id="signup-branch-dept">
+
+    <div id="student-extra">
+      <label>Roll number</label>
+      <input type="text" id="signup-roll">
     </div>
 
-    <!-- LOGIN -->
-    <div class="tab-content active" id="login-tab">
-      <form id="login-form" onsubmit="return false;">
-
-        <label>Role</label>
-        <select id="login-role">
-          <option value="student">Student</option>
-          <option value="teacher">Teacher</option>
-        </select>
-
-        <label>Roll no (student) / Email (teacher)</label>
-        <input
-          type="text"
-          id="login-identifier"
-          placeholder="25WU0801001 or david@college.edu"
-          required
-        >
-
-        <label>Password</label>
-        <div class="password-wrapper">
-          <input type="password" id="login-password" required>
-          <span class="eye-toggle" data-target="login-password">👁️</span>
-        </div>
-
-        <div id="forgot-password">Forgot password?</div>
-
-        <button type="submit" class="btn-primary">Login</button>
-
-        <p id="login-error" class="error"></p>
-      </form>
+    <div id="teacher-extra" class="hidden">
+      <label>Email</label>
+      <input type="email" id="signup-email">
     </div>
 
-    <!-- SIGNUP -->
-    <div class="tab-content" id="signup-tab">
-      <form id="signup-form" onsubmit="return false;">
-
-        <label>Role</label>
-        <select id="signup-role">
-          <option value="student">Student</option>
-          <option value="teacher">Teacher</option>
-        </select>
-
-        <label>Full name</label>
-        <input type="text" id="signup-name" required>
-
-        <label>Department / Branch</label>
-        <input type="text" id="signup-branch-dept">
-
-        <!-- STUDENT -->
-        <div id="student-extra">
-          <label>Roll number</label>
-          <input type="text" id="signup-roll">
-
-          <label>Year / Sem</label>
-          <input type="text" id="signup-year">
-        </div>
-
-        <!-- TEACHER -->
-        <div id="teacher-extra" class="hidden">
-          <label>Email</label>
-          <input type="email" id="signup-email">
-        </div>
-
-        <label>Password</label>
-        <div class="password-wrapper">
-          <input type="password" id="signup-password" required>
-          <span class="eye-toggle" data-target="signup-password">👁️</span>
-        </div>
-
-        <button type="submit" class="btn-primary">Create account</button>
-
-        <p id="signup-error" class="error"></p>
-      </form>
+    <label>Password</label>
+    <div class="password-wrapper">
+      <input type="password" id="signup-password" required>
+      <span class="eye-toggle" data-target="signup-password">👁️</span>
     </div>
-  </div>
 
-  <!-- PASSWORD TOGGLE + FORGOT -->
-  <script>
-    document.addEventListener("click", (e) => {
-      if (e.target.classList.contains("eye-toggle")) {
-        const input = document.getElementById(e.target.dataset.target);
-        input.type = input.type === "password" ? "text" : "password";
-      }
-    });
+    <button type="submit" class="btn-primary">Create account</button>
 
-    document.getElementById("forgot-password").onclick = () => {
-      alert("Password reset is handled via backend.");
-    };
-  </script>
-
-  <!-- MAIN JS -->
-  <script src="script.js"></script>
-</body>
-</html>
+    <p id="signup-error" class="error"></p>
+  </form>
+</div>
