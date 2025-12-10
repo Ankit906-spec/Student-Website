@@ -99,3 +99,23 @@ function initDashboardPage() {
     };
   }
 }
+
+// ================= TAB SWITCHING =================
+document.addEventListener("DOMContentLoaded", () => {
+  const tabButtons = document.querySelectorAll(".tab-btn");
+  const tabs = document.querySelectorAll(".tab-content");
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabButtons.forEach(b => b.classList.remove("active"));
+      tabs.forEach(t => t.classList.remove("active"));
+
+      btn.classList.add("active");
+      document
+        .getElementById(btn.dataset.tab + "-tab")
+        .classList.add("active");
+    });
+  });
+});
+
+
