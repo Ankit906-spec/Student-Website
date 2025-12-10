@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 import multer from "multer";
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
@@ -34,7 +33,7 @@ cloudinary.config({
 // ================== MULTER ==================
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 20 * 1024 * 1024 },
 }).array("files", 5);
 
 // ================== DATABASE ==================
@@ -47,16 +46,6 @@ mongoose
   });
 
 // ================== SCHEMAS ==================
-const userSchema = new mongoose.Schema({
-  id: String,
-  role: String,
-  name: String,
-  email: String,
-  rollNumber: String,
-  department: String,
-  passwordHash: String,
-});
-
 const fileSchema = new mongoose.Schema(
   {
     url: String,
@@ -98,9 +87,8 @@ const courseSchema = new mongoose.Schema({
   students: [String],
 });
 
-const User = mongoose.model("User", userSchema);
-const Course = mongoose.model("Course", courseSchema);
 const Assignment = mongoose.model("Assignment", assignmentSchema);
+const Course = mongoose.model("Course", courseSchema);
 
 // ================== HELPERS ==================
 async function uploadToCloudinary(file, folder) {
@@ -119,7 +107,6 @@ async function uploadToCloudinary(file, folder) {
 }
 
 async function deleteFromCloudinary(url) {
-  // handles folders correctly
   const parts = url.split("/");
   const filename = parts.pop();
   const folder = parts.slice(parts.indexOf("upload") + 1).join("/");
@@ -141,7 +128,7 @@ function auth(req, res, next) {
   }
 }
 
-// ================== CREATE ASSIGNMENT (FIXED) ==================
+// ================== CREATE ASSIGNMENT ==================
 app.post("/api/assignments", auth, async (req, res) => {
   if (req.user.role !== "teacher") {
     return res.status(403).json({ message: "Only teachers allowed" });
@@ -150,9 +137,9 @@ app.post("/api/assignments", auth, async (req, res) => {
   let { courseId, title, description, dueDate, maxMarks } = req.body;
 
   if (!courseId || !title || maxMarks === undefined) {
-    return res.status(400).json({
-      message: "courseId, title and maxMarks are required",
-    });
+    return res
+      .status(400)
+      .json({ message: "courseId, title and maxMarks are required" });
   }
 
   const maxMarksNum = Number(maxMarks);
@@ -165,16 +152,14 @@ app.post("/api/assignments", auth, async (req, res) => {
     return res.status(403).json({ message: "Not allowed" });
   }
 
-  const finalDueDate = dueDate
-    ? new Date(dueDate).toISOString()
-    : new Date().toISOString();
-
   const assignment = new Assignment({
     id: uuidv4(),
     courseId,
     title,
     description: description || "",
-    dueDate: finalDueDate,
+    dueDate: dueDate
+      ? new Date(dueDate).toISOString()
+      : new Date().toISOString(),
     maxMarks: maxMarksNum,
     createdBy: req.user.id,
     createdAt: new Date(),
@@ -185,4 +170,55 @@ app.post("/api/assignments", auth, async (req, res) => {
   res.json(assignment);
 });
 
-// ================== SUBMIT ASSIGNMENT ===============
+// ================== SUBMIT ASSIGNMENT ==================
+app.post("/api/assignments/:id/submit", auth, (req, res) => {
+  if (req.user.role !== "student") {
+    return res.status(403).json({ message: "Students only" });
+  }
+
+  upload(req, res, async () => {
+    const assignment = await Assignment.findOne({ id: req.params.id });
+    if (!assignment) return res.status(404).json({ message: "Not found" });
+
+    const files = [];
+    for (const f of req.files || []) {
+      files.push(await uploadToCloudinary(f, "assignments"));
+    }
+
+    assignment.submissions.push({
+      studentId: req.user.id,
+      files,
+      submittedAt: new Date(),
+      isLate: new Date() > new Date(assignment.dueDate),
+    });
+
+    await assignment.save();
+    res.json({ message: "Submitted" });
+  });
+});
+
+// ================== DELETE FILE ==================
+app.delete("/api/assignments/:id/files", auth, async (req, res) => {
+  const { fileUrl } = req.body;
+
+  const assignment = await Assignment.findOne({ id: req.params.id });
+  if (!assignment) return res.status(404).json({ message: "Not found" });
+
+  const submission = assignment.submissions.find(
+    (s) => s.studentId === req.user.id
+  );
+  if (!submission) return res.status(404).json({ message: "No submission" });
+
+  submission.files = submission.files.filter((f) => f.url !== fileUrl);
+  await deleteFromCloudinary(fileUrl);
+  await assignment.save();
+
+  res.json({ message: "File deleted" });
+});
+
+// ================== HEALTH ==================
+app.get("/", (_, res) => res.send("✅ Backend running"));
+
+app.listen(PORT, () =>
+  console.log(`✅ Server running on port ${PORT}`)
+);
