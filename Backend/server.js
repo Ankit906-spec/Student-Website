@@ -20,7 +20,7 @@ function clearSession() {
 
 // ================= API =================
 async function api(path, options = {}) {
-  const headers = options.headers || {};
+  const headers = { ...(options.headers || {}) };
   const token = getToken();
 
   if (!(options.body instanceof FormData)) {
@@ -30,22 +30,32 @@ async function api(path, options = {}) {
 
   const res = await fetch(API_BASE + path, {
     ...options,
-    headers
+    headers,
   });
 
+  const text = await res.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Request failed");
   }
-  return res.json();
+
+  return data;
 }
 
 // ================= INIT =================
 document.addEventListener("DOMContentLoaded", () => {
   initPasswordToggle();
+  initAuthPage();
 
-  if (document.getElementById("login-form")) initAuthPage();
-  if (document.querySelector(".layout")) initDashboard();
+  if (document.querySelector(".layout")) {
+    initDashboard();
+  }
 });
 
 // ================= PASSWORD TOGGLE =================
@@ -65,6 +75,7 @@ function initAuthPage() {
   const loginForm = document.getElementById("login-form");
   const signupForm = document.getElementById("signup-form");
 
+  // ---------- LOGIN ----------
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -72,23 +83,30 @@ function initAuthPage() {
       const role = document.getElementById("login-role").value;
       const identifier = document.getElementById("login-identifier").value.trim();
       const password = document.getElementById("login-password").value;
+      const errorBox = document.getElementById("login-error");
 
-      document.getElementById("login-error").textContent = "";
+      errorBox.textContent = "";
+
+      if (!identifier || !password) {
+        errorBox.textContent = "All fields are required";
+        return;
+      }
 
       try {
         const data = await api("/api/login", {
           method: "POST",
-          body: JSON.stringify({ role, identifier, password })
+          body: JSON.stringify({ role, identifier, password }),
         });
 
         saveSession(data.token, data.user);
         window.location.href = "dashboard.html";
       } catch (err) {
-        document.getElementById("login-error").textContent = err.message;
+        errorBox.textContent = err.message;
       }
     });
   }
 
+  // ---------- SIGNUP ----------
   if (signupForm) {
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -96,35 +114,48 @@ function initAuthPage() {
       const role = document.getElementById("signup-role").value;
       const name = document.getElementById("signup-name").value.trim();
       const password = document.getElementById("signup-password").value;
-      const branchDept = document.getElementById("signup-branch-dept").value.trim();
       const roll = document.getElementById("signup-roll")?.value.trim();
-      const year = document.getElementById("signup-year")?.value.trim();
       const email = document.getElementById("signup-email")?.value.trim();
+      const errorBox = document.getElementById("signup-error");
 
-      document.getElementById("signup-error").textContent = "";
+      errorBox.textContent = "";
+
+      if (!name || !password) {
+        errorBox.textContent = "Name and password required";
+        return;
+      }
 
       const payload = { role, name, password };
 
       if (role === "student") {
+        if (!roll) {
+          errorBox.textContent = "Roll number required";
+          return;
+        }
         payload.rollNumber = roll;
       } else {
+        if (!email) {
+          errorBox.textContent = "Email required";
+          return;
+        }
         payload.email = email;
       }
 
       try {
         const data = await api("/api/signup", {
           method: "POST",
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
 
         saveSession(data.token, data.user);
         window.location.href = "dashboard.html";
       } catch (err) {
-        document.getElementById("signup-error").textContent = err.message;
+        errorBox.textContent = err.message;
       }
     });
   }
 
+  // ---------- FORGOT PASSWORD ----------
   const forgot = document.getElementById("forgot-password");
   if (forgot) {
     forgot.onclick = () => {
@@ -152,11 +183,17 @@ function initDashboard() {
 
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.onclick = () => {
-      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".nav-btn").forEach((b) =>
+        b.classList.remove("active")
+      );
       btn.classList.add("active");
 
-      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-      document.getElementById("view-" + btn.dataset.view).classList.add("active");
+      document.querySelectorAll(".view").forEach((v) =>
+        v.classList.remove("active")
+      );
+      document
+        .getElementById("view-" + btn.dataset.view)
+        .classList.add("active");
     };
   });
 }
