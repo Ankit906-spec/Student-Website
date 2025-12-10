@@ -1,36 +1,27 @@
 import express from "express";
 import cors from "cors";
-import path from "path";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
 import { v4 as uuidv4 } from "uuid";
-import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// --- Config ---
+// ================== BASIC SETUP ==================
 const app = express();
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-this";
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://pptkumar_db_user:<db_password>@student-cluster.u2hbhrq.mongodb.net/student-portal?retryWrites=true&w=majority";
+const JWT_SECRET = process.env.JWT_SECRET;
+const MONGODB_URI = process.env.MONGODB_URI;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || null; // optional teacher admin
 
-// Cloudinary config
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "your_cloud_name",
-  api_key: process.env.CLOUDINARY_API_KEY || "your_api_key",
-  api_secret: process.env.CLOUDINARY_API_SECRET || "your_api_secret",
-});
+if (!JWT_SECRET || !MONGODB_URI) {
+  console.error("❌ Missing environment variables");
+  process.exit(1);
+}
 
-// Middlewares
 app.use(
   cors({
     origin: "*",
@@ -40,46 +31,42 @@ app.use(
 );
 app.use(express.json());
 
-// Multer: in-memory (no local files)
+// ================== CLOUDINARY ==================
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ================== MULTER ==================
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
-  fileFilter: (req, file, cb) => {
-    const allowed = [
-      "application/pdf",
-      "image/png",
-      "image/jpeg",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("Invalid file type"));
-  },
+  limits: { fileSize: 20 * 1024 * 1024 },
 }).array("files", 5);
 
-// --- MongoDB / Mongoose setup ---
+// ================== DATABASE ==================
 mongoose
   .connect(MONGODB_URI)
-  .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((e) => {
+    console.error("Mongo error", e);
     process.exit(1);
   });
 
-// Schemas
+// ================== SCHEMAS ==================
 const userSchema = new mongoose.Schema({
-  id: { type: String, unique: true }, // for JWT + consistency
+  id: { type: String, unique: true },
   role: { type: String, enum: ["student", "teacher"], required: true },
-  name: { type: String, required: true },
-  email: { type: String, default: null },
-  rollNumber: { type: String, default: null },
-  branch: { type: String, default: null },
-  year: { type: String, default: null },
-  department: { type: String, default: null },
-  profilePhotoUrl: { type: String, default: null },
-  passwordHash: { type: String, required: true },
+  name: String,
+  email: String,
+  rollNumber: String,
+  branch: String,
+  year: String,
+  department: String,
+  profilePhotoUrl: String,
+  passwordHash: String,
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -100,30 +87,31 @@ const submissionSchema = new mongoose.Schema(
     submittedAt: Date,
     marks: { type: Number, default: null },
     feedback: { type: String, default: null },
+    isLate: { type: Boolean, default: false },
   },
   { _id: false }
 );
+
+const assignmentSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  courseId: String,
+  title: String,
+  description: String,
+  dueDate: String, // ISO string
+  maxMarks: Number,
+  createdBy: String, // teacher id
+  createdAt: Date,
+  submissions: [submissionSchema],
+});
 
 const courseSchema = new mongoose.Schema({
   id: { type: String, unique: true },
   name: String,
   code: { type: String, unique: true },
-  description: { type: String, default: "" },
-  teacherId: String, // user.id
-  students: [String], // array of user.id (students)
-  materials: [fileSchema], // study materials
-});
-
-const assignmentSchema = new mongoose.Schema({
-  id: { type: String, unique: true },
-  courseId: String, // course.id
-  title: String,
-  description: { type: String, default: "" },
-  dueDate: String,
-  maxMarks: Number,
-  createdBy: String, // teacher user.id
-  createdAt: { type: Date, default: Date.now },
-  submissions: [submissionSchema],
+  description: String,
+  teacherId: String,
+  students: [String], // user ids
+  materials: [fileSchema],
 });
 
 const messageSchema = new mongoose.Schema({
@@ -131,24 +119,21 @@ const messageSchema = new mongoose.Schema({
   courseId: String,
   userId: String,
   content: String,
-  createdAt: { type: Date, default: Date.now },
+  createdAt: Date,
 });
 
-// Models
 const User = mongoose.model("User", userSchema);
 const Course = mongoose.model("Course", courseSchema);
 const Assignment = mongoose.model("Assignment", assignmentSchema);
 const Message = mongoose.model("Message", messageSchema);
 
-// --- Helpers ---
-
-// Upload a single file buffer to Cloudinary and return meta
+// ================== HELPERS ==================
 async function uploadToCloudinary(file, folder) {
   const base64 = `data:${file.mimetype};base64,${file.buffer.toString(
     "base64"
   )}`;
   const result = await cloudinary.uploader.upload(base64, {
-    folder: folder || "student-portal",
+    folder,
     resource_type: "auto",
   });
 
@@ -160,28 +145,40 @@ async function uploadToCloudinary(file, folder) {
   };
 }
 
-// --- Auth middleware ---
-function authMiddleware(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader)
-    return res.status(401).json({ message: "No token" });
+async function deleteFromCloudinary(url) {
+  const parts = url.split("/");
+  const filename = parts.pop();
+  const folder = parts.slice(parts.indexOf("upload") + 1).join("/");
+  const publicId = `${folder}/${filename.split(".")[0]}`;
 
-  const token = authHeader.split(" ")[1];
-  if (!token) return res.status(401).json({ message: "Invalid token" });
+  await cloudinary.uploader.destroy(publicId, { resource_type: "auto" });
+}
+
+async function isAdminUser(userId) {
+  const user = await User.findOne({ id: userId });
+  if (!user) return false;
+  if (ADMIN_EMAIL) {
+    return user.role === "teacher" && user.email === ADMIN_EMAIL;
+  }
+  return user.role === "teacher";
+}
+
+// ================== AUTH MIDDLEWARE ==================
+function auth(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "No token" });
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { id, role }
+    req.user = jwt.verify(token, JWT_SECRET); // { id, role }
     next();
-  } catch (err) {
-    return res
-      .status(401)
-      .json({ message: "Token invalid or expired" });
+  } catch {
+    return res.status(401).json({ message: "Invalid token" });
   }
 }
 
-// --- Auth routes ---
-// Signup: role = 'student' or 'teacher'
+// ================== AUTH ROUTES ==================
+
+// Signup
 app.post("/api/signup", async (req, res) => {
   try {
     const {
@@ -194,28 +191,22 @@ app.post("/api/signup", async (req, res) => {
       department,
       password,
     } = req.body;
+
     if (!role || !name || !password) {
-      return res
-        .status(400)
-        .json({ message: "Missing required fields" });
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Role-specific checks
     if (role === "student") {
       if (!rollNumber || !branch || !year) {
         return res.status(400).json({
-          message:
-            "Student must have rollNumber, branch and year",
+          message: "Student must have rollNumber, branch and year",
         });
       }
-      const existingStudent = await User.findOne({
-        role: "student",
-        rollNumber,
-      });
-      if (existingStudent) {
-        return res.status(400).json({
-          message: "Student with this roll number already exists",
-        });
+      const existing = await User.findOne({ role: "student", rollNumber });
+      if (existing) {
+        return res
+          .status(400)
+          .json({ message: "Student with this roll number already exists" });
       }
     } else if (role === "teacher") {
       if (!email || !department) {
@@ -223,14 +214,17 @@ app.post("/api/signup", async (req, res) => {
           message: "Teacher must have email and department",
         });
       }
-      const existingTeacher = await User.findOne({
-        role: "teacher",
-        email,
-      });
-      if (existingTeacher) {
-        return res.status(400).json({
-          message: "Teacher with this email already exists",
+      if (ADMIN_EMAIL && email !== ADMIN_EMAIL) {
+        return res.status(403).json({
+          message:
+            "Teacher registration is restricted. Contact admin to create a teacher account.",
         });
+      }
+      const existing = await User.findOne({ role: "teacher", email });
+      if (existing) {
+        return res
+          .status(400)
+          .json({ message: "Teacher with this email already exists" });
       }
     } else {
       return res.status(400).json({ message: "Invalid role" });
@@ -253,13 +247,9 @@ app.post("/api/signup", async (req, res) => {
 
     await newUser.save();
 
-    const token = jwt.sign(
-      { id: newUser.id, role: newUser.role },
-      JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
+    const token = jwt.sign({ id: newUser.id, role: newUser.role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.json({
       token,
@@ -274,13 +264,13 @@ app.post("/api/signup", async (req, res) => {
         department: newUser.department,
       },
     });
-  } catch (err) {
-    console.error("Signup error:", err);
+  } catch (e) {
+    console.error("Signup error", e);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// Login: student => rollNumber, teacher => email
+// Login
 app.post("/api/login", async (req, res) => {
   try {
     const { role, identifier, password } = req.body;
@@ -290,15 +280,9 @@ app.post("/api/login", async (req, res) => {
 
     let user;
     if (role === "student") {
-      user = await User.findOne({
-        role: "student",
-        rollNumber: identifier,
-      });
+      user = await User.findOne({ role: "student", rollNumber: identifier });
     } else if (role === "teacher") {
-      user = await User.findOne({
-        role: "teacher",
-        email: identifier,
-      });
+      user = await User.findOne({ role: "teacher", email: identifier });
     } else {
       return res.status(400).json({ message: "Invalid role" });
     }
@@ -307,23 +291,12 @@ app.post("/api/login", async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user.passwordHash
-    );
-    if (!isMatch) {
-      return res
-        .status(400)
-        .json({ message: "Incorrect password" });
-    }
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) return res.status(400).json({ message: "Incorrect password" });
 
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.json({
       token,
@@ -338,17 +311,80 @@ app.post("/api/login", async (req, res) => {
         department: user.department,
       },
     });
-  } catch (err) {
-    console.error("Login error:", err);
+  } catch (e) {
+    console.error("Login error", e);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Forgot password
+app.post("/api/forgot-password", async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier) {
+      return res.status(400).json({ message: "Identifier required" });
+    }
+    let user =
+      (await User.findOne({ email: identifier })) ||
+      (await User.findOne({ rollNumber: identifier }));
+
+    if (!user) {
+      return res.json({
+        message:
+          "If an account exists with that identifier, a reset link/token has been created.",
+      });
+    }
+
+    const token = uuidv4();
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
+    await user.save();
+
+    // For now, return token in response (in real life, send email)
+    res.json({
+      message: "Password reset token created (valid for 1 hour).",
+      token,
+    });
+  } catch (e) {
+    console.error("Forgot password error", e);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Reset password
+app.post("/api/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "Token and newPassword required" });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    res.json({ message: "Password has been reset successfully" });
+  } catch (e) {
+    console.error("Reset password error", e);
     res.status(500).json({ message: "Server error" });
   }
 });
 
 // Get current user profile
-app.get("/api/me", authMiddleware, async (req, res) => {
+app.get("/api/me", auth, async (req, res) => {
   const user = await User.findOne({ id: req.user.id });
-  if (!user)
-    return res.status(404).json({ message: "User not found" });
+  if (!user) return res.status(404).json({ message: "User not found" });
 
   res.json({
     id: user.id,
@@ -363,8 +399,8 @@ app.get("/api/me", authMiddleware, async (req, res) => {
   });
 });
 
-// Update profile + change password
-app.put("/api/me", authMiddleware, async (req, res) => {
+// Update profile / change password
+app.put("/api/me", auth, async (req, res) => {
   try {
     const {
       name,
@@ -377,25 +413,20 @@ app.put("/api/me", authMiddleware, async (req, res) => {
     } = req.body;
 
     const user = await User.findOne({ id: req.user.id });
-    if (!user)
-      return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     if (name) user.name = name;
     if (user.role === "student") {
       if (branch) user.branch = branch;
       if (year) user.year = year;
-    }
-    if (user.role === "teacher") {
+    } else if (user.role === "teacher") {
       if (department) user.department = department;
     }
     if (profilePhotoUrl) user.profilePhotoUrl = profilePhotoUrl;
 
     if (currentPassword && newPassword) {
-      const isMatch = await bcrypt.compare(
-        currentPassword,
-        user.passwordHash
-      );
-      if (!isMatch)
+      const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!ok)
         return res
           .status(400)
           .json({ message: "Current password incorrect" });
@@ -403,27 +434,26 @@ app.put("/api/me", authMiddleware, async (req, res) => {
     }
 
     await user.save();
-
     res.json({ message: "Profile updated" });
-  } catch (err) {
-    console.error("Update profile error:", err);
+  } catch (e) {
+    console.error("Update profile error", e);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// --- Courses ---
-// Get all courses (search optional)
-app.get("/api/courses", authMiddleware, async (req, res) => {
+// ================== COURSES ==================
+
+// Get all courses (with optional search)
+app.get("/api/courses", auth, async (req, res) => {
   const q = (req.query.q || "").toLowerCase();
 
   let courses = await Course.find({});
   if (q) {
     courses = courses.filter(
       (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q) ||
-        (c.description &&
-          c.description.toLowerCase().includes(q))
+        (c.name || "").toLowerCase().includes(q) ||
+        (c.code || "").toLowerCase().includes(q) ||
+        (c.description || "").toLowerCase().includes(q)
     );
   }
 
@@ -431,41 +461,39 @@ app.get("/api/courses", authMiddleware, async (req, res) => {
     ...new Set(courses.map((c) => c.teacherId).filter(Boolean)),
   ];
   const teachers = await User.find({ id: { $in: teacherIds } });
-  const teacherMap = new Map(
-    teachers.map((t) => [t.id, t.name])
-  );
+  const teacherMap = new Map(teachers.map((t) => [t.id, t.name]));
 
   const result = courses.map((c) => ({
     ...c.toObject(),
     teacherName: c.teacherId ? teacherMap.get(c.teacherId) : null,
+    studentCount: (c.students || []).length,
   }));
 
   res.json(result);
 });
 
-// Teacher creates a course
-app.post("/api/courses", authMiddleware, async (req, res) => {
-  if (req.user.role !== "teacher") {
-    return res
-      .status(403)
-      .json({ message: "Only teachers can create courses" });
+// Create course (admin teacher only)
+app.post("/api/courses", auth, async (req, res) => {
+  if (req.user.role !== "teacher")
+    return res.status(403).json({ message: "Only teachers can create courses" });
+
+  if (!(await isAdminUser(req.user.id))) {
+    return res.status(403).json({
+      message: "Course creation is restricted to the admin teacher account.",
+    });
   }
 
   const { name, code, description } = req.body;
   if (!name || !code) {
-    return res
-      .status(400)
-      .json({ message: "Name and code are required" });
+    return res.status(400).json({ message: "Name and code are required" });
   }
 
   const existing = await Course.findOne({ code });
   if (existing) {
-    return res
-      .status(400)
-      .json({ message: "Course code already exists" });
+    return res.status(400).json({ message: "Course code already exists" });
   }
 
-  const newCourse = new Course({
+  const course = new Course({
     id: uuidv4(),
     name,
     code,
@@ -475,44 +503,33 @@ app.post("/api/courses", authMiddleware, async (req, res) => {
     materials: [],
   });
 
-  await newCourse.save();
-  res.json(newCourse);
+  await course.save();
+  res.json(course);
 });
 
-// Student joins a course
-app.post(
-  "/api/courses/:courseId/join",
-  authMiddleware,
-  async (req, res) => {
-    if (req.user.role !== "student") {
-      return res.status(403).json({
-        message: "Only students can join courses",
-      });
-    }
-
-    const { courseId } = req.params;
-    const course = await Course.findOne({ id: courseId });
-    if (!course)
-      return res
-        .status(404)
-        .json({ message: "Course not found" });
-
-    if (!course.students.includes(req.user.id)) {
-      course.students.push(req.user.id);
-      await course.save();
-    }
-
-    res.json({ message: "Joined course", course });
+// Student joins course
+app.post("/api/courses/:courseId/join", auth, async (req, res) => {
+  if (req.user.role !== "student") {
+    return res.status(403).json({ message: "Only students can join courses" });
   }
-);
+
+  const { courseId } = req.params;
+  const course = await Course.findOne({ id: courseId });
+  if (!course) return res.status(404).json({ message: "Course not found" });
+
+  if (!course.students.includes(req.user.id)) {
+    course.students.push(req.user.id);
+    await course.save();
+  }
+
+  res.json({ message: "Joined course", course });
+});
 
 // Get courses of current user
-app.get("/api/my-courses", authMiddleware, async (req, res) => {
+app.get("/api/my-courses", auth, async (req, res) => {
   let courses;
   if (req.user.role === "student") {
-    courses = await Course.find({
-      students: req.user.id,
-    });
+    courses = await Course.find({ students: req.user.id });
   } else if (req.user.role === "teacher") {
     courses = await Course.find({ teacherId: req.user.id });
   } else {
@@ -523,467 +540,378 @@ app.get("/api/my-courses", authMiddleware, async (req, res) => {
     ...new Set(courses.map((c) => c.teacherId).filter(Boolean)),
   ];
   const teachers = await User.find({ id: { $in: teacherIds } });
-  const teacherMap = new Map(
-    teachers.map((t) => [t.id, t.name])
-  );
+  const teacherMap = new Map(teachers.map((t) => [t.id, t.name]));
 
   const result = courses.map((c) => ({
     ...c.toObject(),
     teacherName: c.teacherId ? teacherMap.get(c.teacherId) : null,
-    studentCount: c.students.length,
+    studentCount: (c.students || []).length,
   }));
 
   res.json(result);
 });
 
-// --- Assignments ---
-// Teacher creates assignment
-app.post("/api/assignments", authMiddleware, async (req, res) => {
+// ================== ASSIGNMENTS ==================
+
+// Create assignment (teacher)
+app.post("/api/assignments", auth, async (req, res) => {
   if (req.user.role !== "teacher") {
-    return res
-      .status(403)
-      .json({ message: "Only teachers can create assignments" });
+    return res.status(403).json({ message: "Only teachers allowed" });
   }
 
-  const { courseId, title, description, dueDate, maxMarks } =
-    req.body;
-  if (!courseId || !title || !dueDate || !maxMarks) {
-    return res.status(400).json({ message: "Missing fields" });
+  let { courseId, title, description, dueDate, maxMarks } = req.body;
+
+  if (!courseId || !title || maxMarks === undefined) {
+    return res
+      .status(400)
+      .json({ message: "courseId, title and maxMarks are required" });
+  }
+
+  const maxMarksNum = Number(maxMarks);
+  if (Number.isNaN(maxMarksNum) || maxMarksNum <= 0) {
+    return res.status(400).json({ message: "Invalid maxMarks" });
   }
 
   const course = await Course.findOne({ id: courseId });
-  if (!course)
-    return res
-      .status(404)
-      .json({ message: "Course not found" });
-  if (course.teacherId !== req.user.id) {
-    return res.status(403).json({
-      message: "You are not the teacher of this course",
-    });
+  if (!course || course.teacherId !== req.user.id) {
+    return res.status(403).json({ message: "Not allowed" });
   }
 
-  const newAssignment = new Assignment({
+  const assignment = new Assignment({
     id: uuidv4(),
     courseId,
     title,
     description: description || "",
-    dueDate,
-    maxMarks,
+    dueDate: dueDate
+      ? new Date(dueDate).toISOString()
+      : new Date().toISOString(),
+    maxMarks: maxMarksNum,
     createdBy: req.user.id,
     createdAt: new Date(),
     submissions: [],
   });
 
-  await newAssignment.save();
-  res.json(newAssignment);
+  await assignment.save();
+  res.json(assignment);
 });
 
 // Get assignments for a course
-app.get(
-  "/api/courses/:courseId/assignments",
-  authMiddleware,
-  async (req, res) => {
-    const { courseId } = req.params;
-    const assignments = await Assignment.find({ courseId });
-    res.json(assignments);
+app.get("/api/courses/:courseId/assignments", auth, async (req, res) => {
+  const { courseId } = req.params;
+  const assignments = await Assignment.find({ courseId });
+  res.json(assignments);
+});
+
+// Submit assignment (student) + upload files
+app.post("/api/assignments/:id/submit", auth, (req, res) => {
+  if (req.user.role !== "student") {
+    return res.status(403).json({ message: "Students only" });
   }
-);
 
-// Student submits assignment (multiple files)
-app.post(
-  "/api/assignments/:assignmentId/submit",
-  authMiddleware,
-  (req, res) => {
-    if (req.user.role !== "student") {
-      return res.status(403).json({
-        message: "Only students can submit assignments",
-      });
-    }
+  upload(req, res, async () => {
+    try {
+      const assignment = await Assignment.findOne({ id: req.params.id });
+      if (!assignment)
+        return res.status(404).json({ message: "Assignment not found" });
 
-    upload(req, res, async (err) => {
-      if (err) {
-        console.error("Upload error:", err);
-        return res.status(400).json({
-          message: err.message || "Upload error",
-        });
+      const course = await Course.findOne({ id: assignment.courseId });
+      if (!course || !course.students.includes(req.user.id)) {
+        return res.status(403).json({ message: "Not enrolled in course" });
       }
 
-      try {
-        const { assignmentId } = req.params;
-        const assignment = await Assignment.findOne({
-          id: assignmentId,
-        });
-        if (!assignment) {
-          return res
-            .status(404)
-            .json({ message: "Assignment not found" });
-        }
-
-        const course = await Course.findOne({
-          id: assignment.courseId,
-        });
-        if (
-          !course ||
-          !course.students.includes(req.user.id)
-        ) {
-          return res.status(403).json({
-            message: "You are not enrolled in this course",
-          });
-        }
-
-        const uploadedFiles = [];
-        for (const file of req.files || []) {
-          const meta = await uploadToCloudinary(
-            file,
-            "assignments"
-          );
-          uploadedFiles.push(meta);
-        }
-
-        let submission =
-          assignment.submissions.find(
-            (s) => s.studentId === req.user.id
-          ) || null;
-
-        if (!submission) {
-          submission = {
-            studentId: req.user.id,
-            files: uploadedFiles,
-            submittedAt: new Date(),
-            marks: null,
-            feedback: null,
-          };
-          assignment.submissions.push(submission);
-        } else {
-          submission.files.push(...uploadedFiles);
-          submission.submittedAt = new Date();
-        }
-
-        await assignment.save();
-        res.json({ message: "Submitted", submission });
-      } catch (e) {
-        console.error("Submit error:", e);
-        res.status(500).json({ message: "Server error" });
+      const uploaded = [];
+      for (const f of req.files || []) {
+        uploaded.push(await uploadToCloudinary(f, "assignments"));
       }
-    });
-  }
-);
 
-// Teacher views submissions for an assignment
-app.get(
-  "/api/assignments/:assignmentId/submissions",
-  authMiddleware,
-  async (req, res) => {
-    if (req.user.role !== "teacher") {
-      return res.status(403).json({
-        message: "Only teachers can view submissions",
-      });
+      const now = new Date();
+      const due = new Date(assignment.dueDate);
+      const isLate = now > due;
+
+      let sub =
+        assignment.submissions.find((s) => s.studentId === req.user.id) ||
+        null;
+
+      if (!sub) {
+        sub = {
+          studentId: req.user.id,
+          files: uploaded,
+          submittedAt: now,
+          marks: null,
+          feedback: null,
+          isLate,
+        };
+        assignment.submissions.push(sub);
+      } else {
+        sub.files.push(...uploaded);
+        sub.submittedAt = now;
+        sub.isLate = isLate;
+      }
+
+      await assignment.save();
+      res.json({ message: "Submitted", submission: sub });
+    } catch (e) {
+      console.error("Submit error", e);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+});
+
+// Get submissions (teacher sees all, student sees own)
+app.get("/api/assignments/:id/submissions", auth, async (req, res) => {
+  const assignment = await Assignment.findOne({ id: req.params.id });
+  if (!assignment)
+    return res.status(404).json({ message: "Assignment not found" });
+
+  const course = await Course.findOne({ id: assignment.courseId });
+  if (!course) return res.status(404).json({ message: "Course not found" });
+
+  if (req.user.role === "teacher") {
+    if (course.teacherId !== req.user.id) {
+      return res.status(403).json({ message: "Not course teacher" });
     }
 
-    const { assignmentId } = req.params;
-    const assignment = await Assignment.findOne({
-      id: assignmentId,
-    });
-    if (!assignment)
-      return res.status(404).json({
-        message: "Assignment not found",
-      });
-
-    const course = await Course.findOne({
-      id: assignment.courseId,
-    });
-    if (!course || course.teacherId !== req.user.id) {
-      return res.status(403).json({
-        message: "You are not teacher of this course",
-      });
-    }
-
-    const studentIds = assignment.submissions.map(
-      (s) => s.studentId
-    );
+    const studentIds = assignment.submissions.map((s) => s.studentId);
     const students = await User.find({ id: { $in: studentIds } });
-    const studentMap = new Map(
-      students.map((s) => [s.id, s])
-    );
+    const map = new Map(students.map((s) => [s.id, s]));
 
-    const result = assignment.submissions.map((s) => {
-      const student = studentMap.get(s.studentId);
+    const subs = assignment.submissions.map((s) => {
+      const st = map.get(s.studentId);
       return {
         studentId: s.studentId,
-        studentName: student ? student.name : "Unknown",
-        rollNumber: student ? student.rollNumber : null,
+        studentName: st ? st.name : "Unknown",
+        rollNumber: st ? st.rollNumber : null,
         files: s.files,
         submittedAt: s.submittedAt,
         marks: s.marks,
         feedback: s.feedback,
+        isLate: s.isLate || false,
       };
     });
 
-    res.json({ assignmentId, submissions: result });
+    return res.json({ assignmentId: assignment.id, submissions: subs });
   }
-);
 
-// Teacher grades a submission
-app.post(
-  "/api/assignments/:assignmentId/grade",
-  authMiddleware,
-  async (req, res) => {
-    if (req.user.role !== "teacher") {
-      return res.status(403).json({
-        message: "Only teachers can grade",
-      });
+  // student
+  if (req.user.role === "student") {
+    if (!course.students.includes(req.user.id)) {
+      return res.status(403).json({ message: "Not enrolled" });
     }
-
-    const { assignmentId } = req.params;
-    const { studentId, marks, feedback } = req.body;
-
-    const assignment = await Assignment.findOne({
-      id: assignmentId,
-    });
-    if (!assignment)
-      return res.status(404).json({
-        message: "Assignment not found",
-      });
-
-    const course = await Course.findOne({
-      id: assignment.courseId,
-    });
-    if (!course || course.teacherId !== req.user.id) {
-      return res.status(403).json({
-        message: "You are not teacher of this course",
-      });
-    }
-
-    const submission = assignment.submissions.find(
-      (s) => s.studentId === studentId
+    const sub = assignment.submissions.find(
+      (s) => s.studentId === req.user.id
     );
-    if (!submission)
-      return res.status(404).json({
-        message: "Submission not found",
-      });
-
-    submission.marks = marks;
-    if (feedback) submission.feedback = feedback;
-
-    await assignment.save();
-
-    res.json({ message: "Graded", submission });
-  }
-);
-
-// --- Course messages (discussion board) ---
-// Get messages for a course
-app.get(
-  "/api/courses/:courseId/messages",
-  authMiddleware,
-  async (req, res) => {
-    const { courseId } = req.params;
-    const messages = await Message.find({ courseId }).sort({
-      createdAt: 1,
-    });
-
-    const userIds = [
-      ...new Set(messages.map((m) => m.userId)),
-    ];
-    const users = await User.find({ id: { $in: userIds } });
-    const userMap = new Map(
-      users.map((u) => [u.id, u])
-    );
-
-    const result = messages.map((m) => {
-      const user = userMap.get(m.userId);
-      return {
-        ...m.toObject(),
-        userName: user ? user.name : "Unknown",
-        userRole: user ? user.role : null,
-      };
-    });
-
-    res.json(result);
-  }
-);
-
-// Post a message in a course
-app.post(
-  "/api/courses/:courseId/messages",
-  authMiddleware,
-  async (req, res) => {
-    const { courseId } = req.params;
-    const { content } = req.body;
-    if (!content)
-      return res
-        .status(400)
-        .json({ message: "Content required" });
-
-    const course = await Course.findOne({ id: courseId });
-    if (!course)
-      return res
-        .status(404)
-        .json({ message: "Course not found" });
-
-    if (
-      req.user.role === "student" &&
-      !course.students.includes(req.user.id)
-    ) {
-      return res.status(403).json({
-        message: "You are not enrolled in this course",
-      });
-    }
-    if (
-      req.user.role === "teacher" &&
-      course.teacherId !== req.user.id
-    ) {
-      return res.status(403).json({
-        message: "You are not teacher of this course",
-      });
-    }
-
-    const newMessage = new Message({
-      id: uuidv4(),
-      courseId,
-      userId: req.user.id,
-      content,
-      createdAt: new Date(),
-    });
-
-    await newMessage.save();
-    res.json(newMessage);
-  }
-);
-
-// --- Study materials upload ---
-app.post(
-  "/api/courses/:courseId/materials",
-  authMiddleware,
-  (req, res) => {
-    if (req.user.role !== "teacher") {
-      return res.status(403).json({
-        message: "Only teachers can upload materials",
-      });
-    }
-
-    upload(req, res, async (err) => {
-      if (err) {
-        console.error("Upload error:", err);
-        return res.status(400).json({
-          message: err.message || "Upload error",
-        });
-      }
-
-      try {
-        const { courseId } = req.params;
-        const course = await Course.findOne({ id: courseId });
-        if (!course)
-          return res.status(404).json({
-            message: "Course not found",
-          });
-
-        if (course.teacherId !== req.user.id) {
-          return res.status(403).json({
-            message:
-              "You are not the teacher of this course",
-          });
-        }
-
-        const uploadedFiles = [];
-        for (const file of req.files || []) {
-          const meta = await uploadToCloudinary(
-            file,
-            "materials"
-          );
-          uploadedFiles.push(meta);
-          course.materials.push(meta);
-        }
-
-        await course.save();
-
-        res.json({
-          message: "Material uploaded",
-          files: uploadedFiles,
-        });
-      } catch (e) {
-        console.error("Material upload error:", e);
-        res.status(500).json({ message: "Server error" });
-      }
+    return res.json({
+      assignmentId: assignment.id,
+      submissions: sub ? [sub] : [],
     });
   }
-);
 
-// --- Dashboard summary ---
-app.get(
-  "/api/dashboard/summary",
-  authMiddleware,
-  async (req, res) => {
-    if (req.user.role === "student") {
-      const myCourses = await Course.find({
-        students: req.user.id,
-      });
-      const courseIds = myCourses.map((c) => c.id);
-
-      const myAssignments = await Assignment.find({
-        courseId: { $in: courseIds },
-      });
-
-      const now = new Date();
-      const pendingAssignments = myAssignments.filter(
-        (a) => {
-          const submission = a.submissions.find(
-            (s) => s.studentId === req.user.id
-          );
-          const due = new Date(a.dueDate);
-          return !submission && due >= now;
-        }
-      );
-
-      const recentMessages = await Message.find({
-        courseId: { $in: courseIds },
-      })
-        .sort({ createdAt: -1 })
-        .limit(5);
-
-      res.json({
-        myCoursesCount: myCourses.length,
-        pendingAssignmentsCount: pendingAssignments.length,
-        pendingAssignments,
-        recentMessages,
-      });
-    } else if (req.user.role === "teacher") {
-      const myCourses = await Course.find({
-        teacherId: req.user.id,
-      });
-      const courseIds = myCourses.map((c) => c.id);
-
-      const myAssignments = await Assignment.find({
-        courseId: { $in: courseIds },
-      });
-
-      let submissionsToGrade = [];
-      myAssignments.forEach((a) => {
-        a.submissions.forEach((s) => {
-          if (s.marks === null || s.marks === undefined) {
-            submissionsToGrade.push({
-              assignmentId: a.id,
-              courseId: a.courseId,
-              studentId: s.studentId,
-              submittedAt: s.submittedAt,
-            });
-          }
-        });
-      });
-
-      res.json({
-        myCoursesCount: myCourses.length,
-        assignmentsCount: myAssignments.length,
-        submissionsToGradeCount:
-          submissionsToGrade.length,
-      });
-    } else {
-      res.status(400).json({ message: "Unknown role" });
-    }
-  }
-);
-
-// --- Start server ---
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+  res.status(400).json({ message: "Unknown role" });
 });
+
+// Grade submission (teacher)
+app.post("/api/assignments/:id/grade", auth, async (req, res) => {
+  if (req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Only teachers can grade" });
+  }
+
+  const { id } = req.params;
+  const { studentId, marks, feedback } = req.body;
+
+  const assignment = await Assignment.findOne({ id });
+  if (!assignment)
+    return res.status(404).json({ message: "Assignment not found" });
+
+  const course = await Course.findOne({ id: assignment.courseId });
+  if (!course || course.teacherId !== req.user.id) {
+    return res.status(403).json({ message: "Not course teacher" });
+  }
+
+  const sub = assignment.submissions.find((s) => s.studentId === studentId);
+  if (!sub) return res.status(404).json({ message: "Submission not found" });
+
+  sub.marks = marks;
+  sub.feedback = feedback || null;
+
+  await assignment.save();
+  res.json({ message: "Graded", submission: sub });
+});
+
+// Delete one file from a student's submission
+app.delete("/api/assignments/:id/files", auth, async (req, res) => {
+  const { fileUrl } = req.body;
+  const assignment = await Assignment.findOne({ id: req.params.id });
+  if (!assignment)
+    return res.status(404).json({ message: "Assignment not found" });
+
+  const sub = assignment.submissions.find(
+    (s) => s.studentId === req.user.id
+  );
+  if (!sub) return res.status(404).json({ message: "No submission" });
+
+  const file = sub.files.find((f) => f.url === fileUrl);
+  sub.files = sub.files.filter((f) => f.url !== fileUrl);
+
+  if (file) {
+    try {
+      await deleteFromCloudinary(file.url);
+    } catch (e) {
+      console.error("Cloudinary delete error", e);
+    }
+  }
+
+  await assignment.save();
+  res.json({ message: "File deleted" });
+});
+
+// ================== MESSAGES ==================
+app.get("/api/courses/:courseId/messages", auth, async (req, res) => {
+  const { courseId } = req.params;
+  const messages = await Message.find({ courseId }).sort({ createdAt: 1 });
+
+  const userIds = [...new Set(messages.map((m) => m.userId))];
+  const users = await User.find({ id: { $in: userIds } });
+  const map = new Map(users.map((u) => [u.id, u]));
+
+  const result = messages.map((m) => {
+    const u = map.get(m.userId);
+    return {
+      ...m.toObject(),
+      userName: u ? u.name : "Unknown",
+      userRole: u ? u.role : null,
+    };
+  });
+
+  res.json(result);
+});
+
+app.post("/api/courses/:courseId/messages", auth, async (req, res) => {
+  const { courseId } = req.params;
+  const { content } = req.body;
+  if (!content) return res.status(400).json({ message: "Content required" });
+
+  const course = await Course.findOne({ id: courseId });
+  if (!course) return res.status(404).json({ message: "Course not found" });
+
+  if (req.user.role === "student" && !course.students.includes(req.user.id)) {
+    return res.status(403).json({ message: "Not enrolled" });
+  }
+  if (req.user.role === "teacher" && course.teacherId !== req.user.id) {
+    return res.status(403).json({ message: "Not course teacher" });
+  }
+
+  const msg = new Message({
+    id: uuidv4(),
+    courseId,
+    userId: req.user.id,
+    content,
+    createdAt: new Date(),
+  });
+
+  await msg.save();
+  res.json(msg);
+});
+
+// ================== STUDY MATERIALS ==================
+app.post("/api/courses/:courseId/materials", auth, (req, res) => {
+  if (req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Only teachers can upload" });
+  }
+
+  upload(req, res, async () => {
+    try {
+      const { courseId } = req.params;
+      const course = await Course.findOne({ id: courseId });
+      if (!course)
+        return res.status(404).json({ message: "Course not found" });
+
+      if (course.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Not course teacher" });
+      }
+
+      const uploaded = [];
+      for (const f of req.files || []) {
+        const meta = await uploadToCloudinary(f, "materials");
+        uploaded.push(meta);
+        course.materials.push(meta);
+      }
+
+      await course.save();
+      res.json({ message: "Material uploaded", files: uploaded });
+    } catch (e) {
+      console.error("Material upload error", e);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+});
+
+// ================== DASHBOARD SUMMARY ==================
+app.get("/api/dashboard/summary", auth, async (req, res) => {
+  if (req.user.role === "student") {
+    const myCourses = await Course.find({ students: req.user.id });
+    const courseIds = myCourses.map((c) => c.id);
+
+    const myAssignments = await Assignment.find({
+      courseId: { $in: courseIds },
+    });
+
+    const now = new Date();
+    const pending = myAssignments.filter((a) => {
+      const sub = a.submissions.find((s) => s.studentId === req.user.id);
+      const due = new Date(a.dueDate);
+      return !sub && due >= now;
+    });
+
+    const recentMessages = await Message.find({
+      courseId: { $in: courseIds },
+    })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    return res.json({
+      myCoursesCount: myCourses.length,
+      pendingAssignmentsCount: pending.length,
+      pendingAssignments: pending,
+      recentMessages,
+    });
+  }
+
+  if (req.user.role === "teacher") {
+    const myCourses = await Course.find({ teacherId: req.user.id });
+    const courseIds = myCourses.map((c) => c.id);
+
+    const myAssignments = await Assignment.find({
+      courseId: { $in: courseIds },
+    });
+
+    const toGrade = [];
+    myAssignments.forEach((a) => {
+      a.submissions.forEach((s) => {
+        if (s.marks === null || s.marks === undefined) {
+          toGrade.push({
+            assignmentId: a.id,
+            courseId: a.courseId,
+            studentId: s.studentId,
+            submittedAt: s.submittedAt,
+            isLate: s.isLate || false,
+          });
+        }
+      });
+    });
+
+    return res.json({
+      myCoursesCount: myCourses.length,
+      assignmentsCount: myAssignments.length,
+      submissionsToGradeCount: toGrade.length,
+    });
+  }
+
+  res.status(400).json({ message: "Unknown role" });
+});
+
+// ================== HEALTH ==================
+app.get("/", (_, res) => res.send("✅ Backend running"));
+
+app.listen(PORT, () =>
+  console.log(`✅ Server running on port ${PORT}`)
+);
