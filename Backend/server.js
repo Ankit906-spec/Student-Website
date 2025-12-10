@@ -1,290 +1,162 @@
-import express from "express";
-import cors from "cors";
-import jwt from "jsonwebtoken";
-import multer from "multer";
-import mongoose from "mongoose";
-import { v2 as cloudinary } from "cloudinary";
-import { v4 as uuidv4 } from "uuid";
-import dotenv from "dotenv";
+// ================= CONFIG =================
+const API_BASE = "https://student-website-1-mx8v.onrender.com";
 
-dotenv.config();
-
-// ================== BASIC SETUP ==================
-const app = express();
-const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET;
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!JWT_SECRET || !MONGODB_URI) {
-  console.error("❌ Missing environment variables");
-  process.exit(1);
+// ================= SESSION =================
+function getToken() {
+  return localStorage.getItem("token");
+}
+function getUser() {
+  const raw = localStorage.getItem("user");
+  return raw ? JSON.parse(raw) : null;
+}
+function saveSession(token, user) {
+  localStorage.setItem("token", token);
+  localStorage.setItem("user", JSON.stringify(user));
+}
+function clearSession() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 }
 
-app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] }));
-app.use(express.json());
+// ================= API =================
+async function api(path, options = {}) {
+  const headers = options.headers || {};
+  const token = getToken();
 
-// ================== CLOUDINARY ==================
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (token) headers["Authorization"] = "Bearer " + token;
 
-// ================== MULTER ==================
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
-}).array("files", 5);
-
-// ================== DATABASE ==================
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  const res = await fetch(API_BASE + path, {
+    ...options,
+    headers
   });
 
-// ================== SCHEMAS ==================
-const fileSchema = new mongoose.Schema(
-  {
-    url: String,
-    originalName: String,
-    mimetype: String,
-    size: Number,
-  },
-  { _id: false }
-);
-
-const submissionSchema = new mongoose.Schema(
-  {
-    studentId: String,
-    files: [fileSchema],
-    submittedAt: Date,
-    marks: Number,
-    feedback: String,
-    isLate: Boolean,
-  },
-  { _id: false }
-);
-
-const assignmentSchema = new mongoose.Schema({
-  id: String,
-  courseId: String,
-  title: String,
-  description: String,
-  dueDate: String,
-  maxMarks: Number,
-  createdBy: String,
-  createdAt: Date,
-  submissions: [submissionSchema],
-});
-
-const courseSchema = new mongoose.Schema({
-  id: String,
-  name: String,
-  teacherId: String,
-  students: [String],
-});
-
-const Assignment = mongoose.model("Assignment", assignmentSchema);
-const Course = mongoose.model("Course", courseSchema);
-
-// ================== HELPERS ==================
-async function uploadToCloudinary(file, folder) {
-  const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-  const result = await cloudinary.uploader.upload(base64, {
-    folder,
-    resource_type: "auto",
-  });
-
-  return {
-    url: result.secure_url,
-    originalName: file.originalname,
-    mimetype: file.mimetype,
-    size: file.size,
-  };
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Request failed");
+  }
+  return res.json();
 }
 
-async function deleteFromCloudinary(url) {
-  const parts = url.split("/");
-  const filename = parts.pop();
-  const folder = parts.slice(parts.indexOf("upload") + 1).join("/");
-  const publicId = `${folder}/${filename.split(".")[0]}`;
+// ================= INIT =================
+document.addEventListener("DOMContentLoaded", () => {
+  initPasswordToggle();
 
-  await cloudinary.uploader.destroy(publicId, { resource_type: "auto" });
-}
-
-// ================== AUTH ==================
-function auth(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ message: "No token" });
-
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ message: "Invalid token" });
-  }
-}
-// ================== USER SCHEMA ==================
-const userSchema = new mongoose.Schema({
-  id: String,
-  role: String,
-  name: String,
-  email: String,
-  rollNumber: String,
-  passwordHash: String,
+  if (document.getElementById("login-form")) initAuthPage();
+  if (document.querySelector(".layout")) initDashboard();
 });
 
-const User = mongoose.model("User", userSchema);
-
-// ================== SIGNUP ==================
-app.post("/api/signup", async (req, res) => {
-  const { role, name, email, rollNumber, password } = req.body;
-
-  if (!role || !name || !password) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
-
-  const bcrypt = (await import("bcryptjs")).default;
-  const hash = await bcrypt.hash(password, 10);
-
-  const user = new User({
-    id: uuidv4(),
-    role,
-    name,
-    email: email || null,
-    rollNumber: rollNumber || null,
-    passwordHash: hash,
-  });
-
-  await user.save();
-
-  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-
-  res.json({
-    token,
-    user: { id: user.id, role: user.role, name: user.name }
-  });
-});
-
-// ================== LOGIN ==================
-app.post("/api/login", async (req, res) => {
-  const { role, identifier, password } = req.body;
-
-  const bcrypt = (await import("bcryptjs")).default;
-
-  const user = role === "student"
-    ? await User.findOne({ rollNumber: identifier })
-    : await User.findOne({ email: identifier });
-
-  if (!user) return res.status(400).json({ message: "User not found" });
-
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return res.status(400).json({ message: "Wrong password" });
-
-  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-
-  res.json({
-    token,
-    user: { id: user.id, role: user.role, name: user.name }
-  });
-});
-
-
-// ================== CREATE ASSIGNMENT ==================
-app.post("/api/assignments", auth, async (req, res) => {
-  if (req.user.role !== "teacher") {
-    return res.status(403).json({ message: "Only teachers allowed" });
-  }
-
-  let { courseId, title, description, dueDate, maxMarks } = req.body;
-
-  if (!courseId || !title || maxMarks === undefined) {
-    return res
-      .status(400)
-      .json({ message: "courseId, title and maxMarks are required" });
-  }
-
-  const maxMarksNum = Number(maxMarks);
-  if (Number.isNaN(maxMarksNum) || maxMarksNum <= 0) {
-    return res.status(400).json({ message: "Invalid maxMarks" });
-  }
-
-  const course = await Course.findOne({ id: courseId });
-  if (!course || course.teacherId !== req.user.id) {
-    return res.status(403).json({ message: "Not allowed" });
-  }
-
-  const assignment = new Assignment({
-    id: uuidv4(),
-    courseId,
-    title,
-    description: description || "",
-    dueDate: dueDate
-      ? new Date(dueDate).toISOString()
-      : new Date().toISOString(),
-    maxMarks: maxMarksNum,
-    createdBy: req.user.id,
-    createdAt: new Date(),
-    submissions: [],
-  });
-
-  await assignment.save();
-  res.json(assignment);
-});
-
-// ================== SUBMIT ASSIGNMENT ==================
-app.post("/api/assignments/:id/submit", auth, (req, res) => {
-  if (req.user.role !== "student") {
-    return res.status(403).json({ message: "Students only" });
-  }
-
-  upload(req, res, async () => {
-    const assignment = await Assignment.findOne({ id: req.params.id });
-    if (!assignment) return res.status(404).json({ message: "Not found" });
-
-    const files = [];
-    for (const f of req.files || []) {
-      files.push(await uploadToCloudinary(f, "assignments"));
+// ================= PASSWORD TOGGLE =================
+function initPasswordToggle() {
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("eye-toggle")) {
+      const input = document.getElementById(e.target.dataset.target);
+      if (input) {
+        input.type = input.type === "password" ? "text" : "password";
+      }
     }
-
-    assignment.submissions.push({
-      studentId: req.user.id,
-      files,
-      submittedAt: new Date(),
-      isLate: new Date() > new Date(assignment.dueDate),
-    });
-
-    await assignment.save();
-    res.json({ message: "Submitted" });
   });
-});
+}
 
-// ================== DELETE FILE ==================
-app.delete("/api/assignments/:id/files", auth, async (req, res) => {
-  const { fileUrl } = req.body;
+// ================= AUTH =================
+function initAuthPage() {
+  const loginForm = document.getElementById("login-form");
+  const signupForm = document.getElementById("signup-form");
 
-  const assignment = await Assignment.findOne({ id: req.params.id });
-  if (!assignment) return res.status(404).json({ message: "Not found" });
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-  const submission = assignment.submissions.find(
-    (s) => s.studentId === req.user.id
-  );
-  if (!submission) return res.status(404).json({ message: "No submission" });
+      const role = document.getElementById("login-role").value;
+      const identifier = document.getElementById("login-identifier").value.trim();
+      const password = document.getElementById("login-password").value;
 
-  submission.files = submission.files.filter((f) => f.url !== fileUrl);
-  await deleteFromCloudinary(fileUrl);
-  await assignment.save();
+      document.getElementById("login-error").textContent = "";
 
-  res.json({ message: "File deleted" });
-});
+      try {
+        const data = await api("/api/login", {
+          method: "POST",
+          body: JSON.stringify({ role, identifier, password })
+        });
 
-// ================== HEALTH ==================
-app.get("/", (_, res) => res.send("✅ Backend running"));
+        saveSession(data.token, data.user);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        document.getElementById("login-error").textContent = err.message;
+      }
+    });
+  }
 
-app.listen(PORT, () =>
-  console.log(`✅ Server running on port ${PORT}`)
-);
+  if (signupForm) {
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
+      const role = document.getElementById("signup-role").value;
+      const name = document.getElementById("signup-name").value.trim();
+      const password = document.getElementById("signup-password").value;
+      const branchDept = document.getElementById("signup-branch-dept").value.trim();
+      const roll = document.getElementById("signup-roll")?.value.trim();
+      const year = document.getElementById("signup-year")?.value.trim();
+      const email = document.getElementById("signup-email")?.value.trim();
+
+      document.getElementById("signup-error").textContent = "";
+
+      const payload = { role, name, password };
+
+      if (role === "student") {
+        payload.rollNumber = roll;
+      } else {
+        payload.email = email;
+      }
+
+      try {
+        const data = await api("/api/signup", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        saveSession(data.token, data.user);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        document.getElementById("signup-error").textContent = err.message;
+      }
+    });
+  }
+
+  const forgot = document.getElementById("forgot-password");
+  if (forgot) {
+    forgot.onclick = () => {
+      alert("Password reset will be added later.");
+    };
+  }
+}
+
+// ================= DASHBOARD =================
+function initDashboard() {
+  const user = getUser();
+  if (!user || !getToken()) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  document.getElementById("user-name").textContent = user.name;
+  document.getElementById("user-role-badge").textContent =
+    user.role === "student" ? "Student" : "Teacher";
+
+  document.getElementById("logout-btn").onclick = () => {
+    clearSession();
+    window.location.href = "index.html";
+  };
+
+  document.querySelectorAll(".nav-btn").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      document.getElementById("view-" + btn.dataset.view).classList.add("active");
+    };
+  });
+}
