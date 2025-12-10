@@ -1,6 +1,6 @@
 // ================== CONFIG ==================
 const API_BASE = "https://student-website-1-mx8v.onrender.com";
-
+  
 // ================== SESSION ==================
 function getToken() {
   return localStorage.getItem("token");
