@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Neon Student Portal</title>
+  <title>Dashboard | Neon Student Portal</title>
   <link rel="stylesheet" href="style.css">
+  <!-- FullCalendar CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
 </head>
+
 <body class="bg">
-  <div class="stars"></div>
-  <div class="glow-orb"></div>
+
 
   <header class="topbar">
     <div class="topbar-left">
-      <h2>Neon<span>Campus</span></h2>
-      <span id="user-role-badge" class="badge"></span>
+      <h2 class="horizon-logo">Horizon<span>X</span></h2>
+      <div id="user-role-badge" class="badge"></div>
     </div>
     <div class="topbar-right">
       <span id="user-name"></span>
@@ -25,108 +28,208 @@
       <button class="nav-btn active" data-view="overview">Overview</button>
       <button class="nav-btn" data-view="courses">Courses</button>
       <button class="nav-btn" data-view="assignments">Assignments</button>
-      <button class="nav-btn" data-view="messages">Course board</button>
+      <button class="nav-btn" data-view="messages">Discussion / Messages</button>
       <button class="nav-btn" data-view="materials">Study Materials</button>
       <button class="nav-btn" data-view="profile">Profile</button>
+      <button class="nav-btn" data-view="datesheets">Exam Date Sheet</button>
     </aside>
 
     <section class="content">
-
-      <!-- OVERVIEW -->
+      <!-- Overview -->
       <div class="view active" id="view-overview">
         <h3>Overview</h3>
         <div class="cards">
-          <div class="card">
+          <div class="card nav-card" data-target="courses" style="cursor:pointer">
             <h4>My courses</h4>
             <p id="stat-courses">–</p>
           </div>
-          <div class="card" id="student-only-pending">
-            <h4>Pending assignments</h4>
-            <p id="stat-pending">–</p>
+          <div class="card nav-card" id="student-only-completed" data-target="assignments" style="cursor:pointer">
+            <h4>Completed assignments</h4>
+            <p id="stat-completed">–</p>
           </div>
           <div class="card" id="teacher-only-submissions">
             <h4>Submissions to grade</h4>
             <p id="stat-to-grade">–</p>
           </div>
         </div>
+
+        <div id="overview-extra"></div>
       </div>
 
-      <!-- COURSES -->
+      <!-- Courses -->
       <div class="view" id="view-courses">
-        <h3>Courses</h3>
-        <input id="course-search" placeholder="Search courses">
-        <button id="btn-refresh-courses" class="btn-outline-small">Refresh</button>
-        <button id="btn-create-course" class="btn-primary-small teacher-only">
-          + Create course
-        </button>
+        <div class="view-header">
+          <h3>Courses</h3>
+          <div class="view-actions">
+            <input type="text" id="course-search" placeholder="Search courses...">
+            <button id="btn-refresh-courses" class="btn-outline-small">Refresh</button>
+            <button id="btn-create-course" class="btn-primary-small teacher-only">+ Create course</button>
+          </div>
+        </div>
+
         <div id="courses-list" class="grid"></div>
       </div>
 
-      <!-- ASSIGNMENTS -->
+      <!-- Assignments -->
       <div class="view" id="view-assignments">
-        <h3>Assignments</h3>
-        <input id="assignment-search" placeholder="Search assignments">
-        <button id="btn-refresh-assignments" class="btn-outline-small">Refresh</button>
-        <button id="btn-create-assignment" class="btn-primary-small teacher-only">
-          + New assignment
-        </button>
-        <div id="assignments-list" class="grid"></div>
+        <div class="view-header">
+          <h3>Assignments</h3>
+          <div class="view-actions">
+            <input type="text" id="assignment-search" placeholder="Search assignments...">
+            <button id="btn-refresh-assignments" class="btn-outline-small">Refresh</button>
+            <button id="btn-create-assignment" class="btn-primary-small teacher-only">+ New assignment</button>
+          </div>
+        </div>
+        <div class="assignments-container">
+          <div id="assignments-list" class="grid"></div>
+          <div id="assignments-subjects-sidebar" class="subjects-sidebar">
+            <h4>Subjects</h4>
+            <div id="subjects-list-sidebar"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- MESSAGES -->
+      <!-- Exam Date Sheet -->
+      <div class="view" id="view-datesheets">
+        <div class="view-header">
+          <h3>Exam Date Sheet</h3>
+          <div class="view-actions">
+            <select id="datesheets-course-select"></select>
+            <button id="btn-upload-datesheet" class="btn-outline-small teacher-only">Upload PDF</button>
+          </div>
+        </div>
+        <!-- Calendar Container -->
+        <div id="calendar-container"></div>
+        <!-- PDF Date Sheets List -->
+        <div id="datesheets-list" class="grid" style="margin-top: 20px;"></div>
+      </div>
+
+      <!-- Course board -->
       <div class="view" id="view-messages">
-        <h3>Course discussion</h3>
-        <select id="messages-course-select"></select>
-        <div id="messages-container" class="messages"></div>
-        <form id="message-form">
-          <input id="message-input" placeholder="Type message">
-          <button class="btn-primary-small">Send</button>
-        </form>
+        <div class="view-header">
+          <h3>Course discussion board</h3>
+        </div>
+        <div class="chat-container">
+          <div id="chat-sidebar" class="chat-sidebar"></div>
+          <div class="chat-main">
+            <div id="messages-container" class="messages" style="max-height: 400px;"></div>
+            <form id="message-form" class="message-form">
+              <input type="text" id="message-input" placeholder="Type a message for this course...">
+              <button type="submit" class="btn-primary-small">Send</button>
+            </form>
+          </div>
+        </div>
       </div>
 
-      <!-- MATERIALS -->
-      <div class="view" id="view-materials">
-        <h3>Study Materials</h3>
-        <select id="materials-course-select"></select>
-        <button id="btn-upload-material" class="btn-primary-small teacher-only">
-          Upload material
-        </button>
-        <div id="materials-list" class="grid"></div>
-      </div>
-
-      <!-- PROFILE -->
+      <!-- Profile -->
       <div class="view" id="view-profile">
         <h3>Profile</h3>
-        <form id="profile-form">
-          <input id="profile-name" placeholder="Name">
-          <input id="profile-role" disabled>
-          <input id="profile-roll" disabled>
-          <input id="profile-branch-dept" placeholder="Branch / Dept">
-          <input id="profile-year" placeholder="Year">
-          <input id="profile-email" disabled>
-          <input id="profile-photo" placeholder="Photo URL">
+        <form id="profile-form" class="profile-form">
+          <div class="two-col">
+            <div>
+              <label>Full name</label>
+              <input type="text" id="profile-name">
+            </div>
+            <div>
+              <label>Role</label>
+              <input type="text" id="profile-role" disabled>
+            </div>
+          </div>
 
-          <input id="profile-current-password" type="password" placeholder="Current password">
-          <input id="profile-new-password" type="password" placeholder="New password">
+          <div class="two-col">
+            <div>
+              <label>Roll number (student)</label>
+              <input type="text" id="profile-roll" disabled>
+            </div>
+            <div>
+              <label>Branch / Department</label>
+              <input type="text" id="profile-branch-dept">
+            </div>
+          </div>
 
-          <button class="btn-primary">Save</button>
-          <p id="profile-message"></p>
+          <div class="two-col">
+            <div>
+              <label>Year / Sem</label>
+              <input type="text" id="profile-year">
+            </div>
+            <div>
+              <label>Email (teacher)</label>
+              <input type="email" id="profile-email" disabled>
+            </div>
+          </div>
+
+          <div class="profile-photo-section" style="margin: 1.5rem 0; display: flex; align-items: center; gap: 1.5rem;">
+            <div id="profile-photo-preview"
+              style="width: 100px; height: 100px; border-radius: 50%; background: #222; overflow: hidden; border: 2px solid var(--accent-cyan); display: flex; align-items: center; justify-content: center;">
+              <img id="profile-img-preview" src="" alt="Profile"
+                style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              <span id="profile-initials" style="font-size: 2rem; color: #555;">?</span>
+            </div>
+            <div>
+              <label style="display: block; margin-bottom: 0.5rem;">Profile Photo</label>
+              <input type="file" id="profile-photo-input" accept="image/*" style="display: none;">
+              <button type="button" class="btn-outline-small"
+                onclick="document.getElementById('profile-photo-input').click()">Upload New Photo</button>
+              <p class="hint">Upload a real photo so teachers can recognize you.</p>
+            </div>
+          </div>
+
+          <div id="teacher-expertise-group" class="teacher-only">
+            <label>Your Expertise (Visible to students)</label>
+            <textarea id="profile-expertise" rows="3"
+              style="width:100%; padding:0.5rem; background:#111; color:white; border:1px solid #333; border-radius:4px;"></textarea>
+          </div>
+
+          <h4>Change password</h4>
+          <div class="two-col">
+            <div>
+              <label>Current password</label>
+              <input type="password" id="profile-current-password">
+            </div>
+            <div>
+              <label>New password</label>
+              <input type="password" id="profile-new-password">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary">Save changes</button>
+          <p id="profile-message" class="hint"></p>
         </form>
       </div>
+      <!-- Study Materials -->
+      <div class="view" id="view-materials">
+        <div class="watermark-bg">STUDY MATERIAL</div>
+        <div class="view-header">
+          <h3>Study Materials</h3>
+
+          <div class="assignments-container">
+            <div id="materials-list" class="grid"></div>
+            <div class="subjects-sidebar">
+              <h4>Select Subject</h4>
+              <div id="materials-courses-sidebar"></div>
+            </div>
+          </div>
+        </div>
 
     </section>
   </main>
 
-  <!-- MODAL -->
+  <!-- Simple modal for create course / assignment / submit -->
   <div class="modal hidden" id="modal">
     <div class="modal-content">
       <h3 id="modal-title"></h3>
       <div id="modal-body"></div>
-      <button id="modal-cancel" class="btn-outline-small">Cancel</button>
-      <button id="modal-save" class="btn-primary-small">Save</button>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-outline-small">Cancel</button>
+        <button id="modal-save" class="btn-primary-small">Save</button>
+      </div>
     </div>
   </div>
 
+  <script type="module" src="analytics.js"></script>
+  <!-- FullCalendar JS -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
   <script src="script.js"></script>
 </body>
+
 </html>

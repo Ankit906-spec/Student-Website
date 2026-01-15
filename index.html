@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Neon Student Portal</title>
+  <title>HorizonX | Futuristic Student Hub</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body class="bg">
-  <div class="stars"></div>
-  <div class="glow-orb"></div>
+
 
   <div class="auth-container">
     <div class="brand">
-      <h1>Neon<span>Campus</span></h1>
-      <p>Futuristic student-teacher hub for 250 humans.</p>
+      <h1 class="horizon-logo">Horizon<span>X</span></h1>
+      <p>Precision Learning & Collaborative Academic Intelligence.</p>
     </div>
 
     <div class="tabs">
@@ -20,7 +21,8 @@
       <button class="tab-btn" data-tab="signup">Sign up</button>
     </div>
 
-    <!-- Login -->
+
+    <!-- Login form -->
     <div class="tab-content active" id="login-tab">
       <form id="login-form">
         <label>Role</label>
@@ -29,24 +31,25 @@
           <option value="teacher">Teacher</option>
         </select>
 
-        <label>Roll no (student) / Email (teacher)</label>
-        <input type="text" id="login-identifier" placeholder="25WU0801001 or Sheldon_2028@woxsen.edu.in" required>
+        <label>Roll no (student) / Email (both)</label>
+        <input type="text" id="login-identifier" placeholder="Roll Number OR Email Address" required>
 
         <label>Password</label>
-        <input type="password" id="login-password" required>
+        <div class="password-wrapper">
+          <input type="password" id="login-password" required>
+          <span class="toggle-password" onclick="togglePassword('login-password')">👁️</span>
+        </div>
 
-        <!-- 🔥 Reset password link (required by script.js) -->
-        <p id="forgot-password-link" style="text-align:right; font-size:12px; margin-top:-6px; cursor:pointer; color:#4de5ff;">
-          Forgot password?
-        </p>
-
-        <button type="submit" class="btn-primary">Login</button>
-        <p class="hint">Use the same portal for both students and teachers.</p>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Login</button>
+          <a href="#" id="forgot-password-link" class="small-link">Forgot password?</a>
+        </div>
+        <p class="hint">Students can login with Roll No or Email.</p>
         <p id="login-error" class="error"></p>
       </form>
     </div>
 
-    <!-- Signup -->
+    <!-- Signup form -->
     <div class="tab-content" id="signup-tab">
       <form id="signup-form">
         <label>Role</label>
@@ -55,16 +58,61 @@
           <option value="teacher">Teacher</option>
         </select>
 
-        <div class="two-col">
+        <div>
+          <label>Full name</label>
+          <input type="text" id="signup-name" required>
+        </div>
+
+        <div id="signup-program-group">
+          <label>Program</label>
+          <select id="signup-program">
+            <option value="">Select Program</option>
+            <option value="B.Tech">B.Tech</option>
+            <option value="BBA">BBA</option>
+          </select>
+        </div>
+
+        <div id="branch-section" class="two-col hidden">
           <div>
-            <label>Full name</label>
-            <input type="text" id="signup-name" required>
+            <label>Branch</label>
+            <select id="signup-branch">
+              <option value="">Select Branch</option>
+            </select>
           </div>
-          <div>
-            <label>Department / Branch</label>
-            <input type="text" id="signup-branch-dept" placeholder="CSE / ECE / BCA / Physics">
+          <div id="sub-branch-wrapper" class="hidden">
+            <label>Sub-Branch / Section</label>
+            <select id="signup-sub-branch">
+              <option value="">Select Section</option>
+            </select>
           </div>
         </div>
+
+        <div id="teacher-extra" class="hidden">
+          <label>Rank / Hierarchy</label>
+          <select id="signup-rank">
+            <option value="Teaching Assistant">Teaching Assistant</option>
+            <option value="Assistant Professor">Assistant Professor</option>
+            <option value="Associate Professor">Associate Professor</option>
+            <option value="Professor">Professor</option>
+            <option value="Distinguished Professor">Distinguished Professor</option>
+            <option value="Course In-charge">Course In-charge</option>
+            <option value="Program Coordinator">Program Coordinator</option>
+            <option value="Head of Department">Head of Department</option>
+            <option value="Dean">Dean</option>
+          </select>
+
+          <label>Institutional Code (Required for Faculty)</label>
+          <div style="margin-bottom: 1rem;">
+            <p class="small" style="color: var(--text-dim); margin-bottom: 5px;">
+              Enter the teacher-only code to verify your identity.
+            </p>
+            <input type="text" id="signup-otp" placeholder="Enter Registration Code" style="width: 100%;">
+            <p id="signup-otp-msg" class="hint"></p>
+          </div>
+        </div>
+
+        <label>Email (Required for account recovery)</label>
+        <input type="email" id="signup-email" placeholder="you@university.edu" required>
 
         <div id="student-extra">
           <div class="two-col">
@@ -79,23 +127,48 @@
           </div>
         </div>
 
-        <div id="teacher-extra" class="hidden">
-          <label>Email (for teacher login)</label>
-          <input type="email" id="signup-email" placeholder="Sheldon_2028@woxsen.edu.in">
-        </div>
+        <!-- Teacher extra removed because email is now global -->
 
         <label>Password</label>
-        <input type="password" id="signup-password" required>
+        <div class="password-wrapper">
+          <input type="password" id="signup-password" required>
+          <span class="toggle-password" onclick="togglePassword('signup-password')">👁️</span>
+        </div>
 
-        <!-- 🔥 Required ID so script.js can trigger this -->
-        <button type="submit" id="btn-create-account" class="btn-primary">Create account</button>
-
-        <p class="hint">Students login via roll number. Teachers login via email.</p>
+        <button type="submit" class="btn-primary">Create account</button>
+        <p class="hint">Please use a valid email for password recovery.</p>
         <p id="signup-error" class="error"></p>
       </form>
     </div>
   </div>
 
+  <!-- Forgot Password Modal -->
+  <div class="modal hidden" id="forgot-modal">
+    <div class="modal-content auth-modal-content">
+      <h3>Reset Password</h3>
+      <div id="forgot-step-1">
+        <p>Enter your registered email address. We will send you an OTP.</p>
+        <label>Email</label>
+        <input type="email" id="forgot-email">
+        <button id="btn-send-otp" class="btn-primary">Send OTP</button>
+      </div>
+
+      <div id="forgot-step-2" class="hidden">
+        <p>OTP sent! Check your email (or server console) and enter it below.</p>
+        <label>OTP Code</label>
+        <input type="text" id="forgot-otp" placeholder="6-digit code">
+        <label>New Password</label>
+        <input type="password" id="forgot-new-pass">
+        <button id="btn-reset-pass" class="btn-primary">Set New Password</button>
+      </div>
+
+      <button id="btn-close-forgot" class="btn-outline-small" style="margin-top:1rem;">Cancel</button>
+      <p id="forgot-message" class="hint"></p>
+    </div>
+  </div>
+
+  <script type="module" src="analytics.js"></script>
   <script src="script.js"></script>
 </body>
+
 </html>

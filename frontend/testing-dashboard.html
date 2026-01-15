@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Dashboard | Student Portal Analytics</title>
+    <link rel="stylesheet" href="testing-dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="dashboard-header">
+            <h1>📊 Testing Dashboard</h1>
+            <p class="subtitle">Real-time Analytics & User Behavior Tracking</p>
+            <div class="header-actions">
+                <button id="refresh-btn" class="btn-primary">🔄 Refresh Data</button>
+                <button id="export-btn" class="btn-secondary">📥 Export Data</button>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-content">
+                    <h3 id="total-events">0</h3>
+                    <p>Total Events</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-content">
+                    <h3 id="total-sessions">0</h3>
+                    <p>Total Sessions</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-content">
+                    <h3 id="unique-users">0</h3>
+                    <p>Unique Users</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-content">
+                    <h3 id="avg-session-time">0m</h3>
+                    <p>Avg Session Time</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Sessions List -->
+            <section class="dashboard-section">
+                <h2>📋 Recent Sessions</h2>
+                <div class="filters">
+                    <input type="date" id="start-date" placeholder="Start Date">
+                    <input type="date" id="end-date" placeholder="End Date">
+                    <input type="text" id="search-user" placeholder="Search by User ID">
+                    <button id="filter-btn" class="btn-small">Apply Filters</button>
+                    <button id="clear-filters-btn" class="btn-small">Clear</button>
+                </div>
+                <div id="sessions-list" class="sessions-list">
+                    <!-- Sessions will be populated here -->
+                </div>
+            </section>
+
+            <!-- Event Type Breakdown -->
+            <section class="dashboard-section">
+                <h2>📊 Event Type Breakdown</h2>
+                <div class="chart-container">
+                    <canvas id="event-types-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- Top Pages -->
+            <section class="dashboard-section">
+                <h2>🏆 Most Visited Pages</h2>
+                <div class="chart-container">
+                    <canvas id="page-views-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- Top Button Clicks -->
+            <section class="dashboard-section">
+                <h2>🖱️ Most Clicked Buttons</h2>
+                <div class="chart-container">
+                    <canvas id="button-clicks-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- Session Details Modal -->
+            <div id="session-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h2>Session Details</h2>
+                        <button id="close-modal-btn" class="close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="session-info" class="session-info">
+                            <!-- Session info will be populated here -->
+                        </div>
+                        <div id="participant-info-container" class="session-info hidden"
+                            style="margin-top: 20px; border-left: 4px solid #764ba2;">
+                            <h3>👤 Participant Information</h3>
+                            <div id="participant-info-grid" class="session-info-grid">
+                                <!-- Participant details will be populated here -->
+                            </div>
+                        </div>
+                        <div id="session-events" class="events-timeline">
+                            <!-- Events will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="dashboard-footer">
+            <p>Student Portal Analytics | Design Thinking Project | Last Updated: <span id="last-updated">--</span></p>
+        </footer>
+    </div>
+
+    <script src="testing-dashboard.js"></script>
+</body>
+
+</html>

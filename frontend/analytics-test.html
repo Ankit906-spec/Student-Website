@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .status {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #events-log {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .event-item {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📊 Analytics Test Page</h1>
+
+        <div class="info">
+            <strong>ℹ️ Purpose:</strong> This page tests the analytics tracking system. Every interaction is being
+            tracked and sent to the backend.
+        </div>
+
+        <div class="status">
+            <strong>✅ Status:</strong> Analytics Tracking Active<br>
+            <strong>Session ID:</strong> <span id="session-id">Loading...</span><br>
+            <strong>Events Tracked:</strong> <span id="event-count">0</span>
+        </div>
+
+        <h2>Interactive Elements</h2>
+        <p>Click buttons, type in inputs, and watch events being tracked below:</p>
+
+        <div style="margin: 20px 0;">
+            <button id="btn-test-1">Test Button 1</button>
+            <button id="btn-test-2">Test Button 2</button>
+            <button id="btn-test-3">Test Button 3</button>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <input type="text" id="test-input" placeholder="Type something here...">
+            <input type="email" id="test-email" placeholder="Enter email...">
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button id="btn-custom-event">Fire Custom Event</button>
+            <button id="btn-sync-events">Sync Events Now</button>
+            <button id="btn-view-dashboard">View Dashboard</button>
+        </div>
+
+        <h3>Events Log (Local)</h3>
+        <div id="events-log">
+            <div class="event-item">Waiting for events...</div>
+        </div>
+
+        <div class="info" style="margin-top: 20px;">
+            <strong>📝 Instructions:</strong>
+            <ol>
+                <li>Ensure backend server is running on port 4000</li>
+                <li>Interact with elements above</li>
+                <li>Watch events appear in log</li>
+                <li>Click "View Dashboard" to see analytics</li>
+                <li>Refresh dashboard to see this session's data</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="analytics.js"></script>
+    <script>
+        // Display session info
+        document.getElementById('session-id').textContent = window.analytics.sessionId;
+
+        let localEventCount = 0;
+        const eventsLog = document.getElementById('events-log');
+
+        // Override trackEvent to also log locally
+        const originalTrackEvent = window.analytics.trackEvent.bind(window.analytics);
+        window.analytics.trackEvent = function (eventType, eventData) {
+            const event = originalTrackEvent(eventType, eventData);
+
+            // Log to page
+            localEventCount++;
+            document.getElementById('event-count').textContent = localEventCount;
+
+            const eventItem = document.createElement('div');
+            eventItem.className = 'event-item';
+            eventItem.textContent = `[${new Date().toLocaleTimeString()}] ${eventType} - ${JSON.stringify(eventData)}`;
+
+            if (eventsLog.firstChild.textContent === 'Waiting for events...') {
+                eventsLog.innerHTML = '';
+            }
+
+            eventsLog.insertBefore(eventItem, eventsLog.firstChild);
+
+            return event;
+        };
+
+        // Custom event buttons
+        document.getElementById('btn-custom-event').addEventListener('click', () => {
+            window.analytics.trackCustomEvent('test_event', {
+                customData: 'This is a custom test event',
+                timestamp: Date.now()
+            });
+        });
+
+        document.getElementById('btn-sync-events').addEventListener('click', () => {
+            window.analytics.syncEvents();
+            alert('Events synced to backend!');
+        });
+
+        document.getElementById('btn-view-dashboard').addEventListener('click', () => {
+            window.open('testing-dashboard.html', '_blank');
+        });
+
+        // Add custom tracking for test buttons
+        document.getElementById('btn-test-1').addEventListener('click', () => {
+            console.log('Test Button 1 clicked');
+        });
+
+        document.getElementById('btn-test-2').addEventListener('click', () => {
+            console.log('Test Button 2 clicked');
+        });
+
+        document.getElementById('btn-test-3').addEventListener('click', () => {
+            console.log('Test Button 3 clicked');
+        });
+
+        console.log('Analytics Test Page loaded');
+        console.log('Session ID:', window.analytics.sessionId);
+    </script>
+</body>
+
+</html>

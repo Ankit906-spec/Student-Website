@@ -1,69 +1,174 @@
-<!-- LOGIN -->
-<div class="tab-content active" id="login-tab">
-  <form id="login-form">
+<!DOCTYPE html>
+<html lang="en">
 
-    <label>Role</label>
-    <select id="login-role">
-      <option value="student">Student</option>
-      <option value="teacher">Teacher</option>
-    </select>
+<head>
+  <meta charset="UTF-8">
+  <title>HorizonX | Futuristic Student Hub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
 
-    <label>Roll no (student) / Email (teacher)</label>
-    <input
-      type="text"
-      id="login-identifier"
-      placeholder="25WU0801001 or david@college.edu"
-      required
-    >
+<body class="bg">
 
-    <label>Password</label>
-    <div class="password-wrapper">
-      <input type="password" id="login-password" required>
-      <span class="eye-toggle" data-target="login-password">👁️</span>
+
+  <div class="auth-container">
+    <div class="brand">
+      <h1 class="horizon-logo">Horizon<span>X</span></h1>
+      <p>Precision Learning & Collaborative Academic Intelligence.</p>
     </div>
 
-    <div id="forgot-password">Forgot password?</div>
-
-    <button type="submit" class="btn-primary">Login</button>
-
-    <p id="login-error" class="error"></p>
-  </form>
-</div>
-
-<!-- SIGNUP -->
-<div class="tab-content" id="signup-tab">
-  <form id="signup-form">
-
-    <label>Role</label>
-    <select id="signup-role">
-      <option value="student">Student</option>
-      <option value="teacher">Teacher</option>
-    </select>
-
-    <label>Full name</label>
-    <input type="text" id="signup-name" required>
-
-    <label>Department / Branch</label>
-    <input type="text" id="signup-branch-dept">
-
-    <div id="student-extra">
-      <label>Roll number</label>
-      <input type="text" id="signup-roll">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login">Login</button>
+      <button class="tab-btn" data-tab="signup">Sign up</button>
     </div>
 
-    <div id="teacher-extra" class="hidden">
-      <label>Email</label>
-      <input type="email" id="signup-email">
+
+    <!-- Login form -->
+    <div class="tab-content active" id="login-tab">
+      <form id="login-form">
+        <label>Role</label>
+        <select id="login-role">
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+
+        <label>Roll no (student) / Email (both)</label>
+        <input type="text" id="login-identifier" placeholder="Roll Number OR Email Address" required>
+
+        <label>Password</label>
+        <div class="password-wrapper">
+          <input type="password" id="login-password" required>
+          <span class="toggle-password" onclick="togglePassword('login-password')">👁️</span>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Login</button>
+          <a href="#" id="forgot-password-link" class="small-link">Forgot password?</a>
+        </div>
+        <p class="hint">Students can login with Roll No or Email.</p>
+        <p id="login-error" class="error"></p>
+      </form>
     </div>
 
-    <label>Password</label>
-    <div class="password-wrapper">
-      <input type="password" id="signup-password" required>
-      <span class="eye-toggle" data-target="signup-password">👁️</span>
+    <!-- Signup form -->
+    <div class="tab-content" id="signup-tab">
+      <form id="signup-form">
+        <label>Role</label>
+        <select id="signup-role">
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+
+        <div>
+          <label>Full name</label>
+          <input type="text" id="signup-name" required>
+        </div>
+
+        <div id="signup-program-group">
+          <label>Program</label>
+          <select id="signup-program">
+            <option value="">Select Program</option>
+            <option value="B.Tech">B.Tech</option>
+            <option value="BBA">BBA</option>
+          </select>
+        </div>
+
+        <div id="branch-section" class="two-col hidden">
+          <div>
+            <label>Branch</label>
+            <select id="signup-branch">
+              <option value="">Select Branch</option>
+            </select>
+          </div>
+          <div id="sub-branch-wrapper" class="hidden">
+            <label>Sub-Branch / Section</label>
+            <select id="signup-sub-branch">
+              <option value="">Select Section</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="teacher-extra" class="hidden">
+          <label>Rank / Hierarchy</label>
+          <select id="signup-rank">
+            <option value="Teaching Assistant">Teaching Assistant</option>
+            <option value="Assistant Professor">Assistant Professor</option>
+            <option value="Associate Professor">Associate Professor</option>
+            <option value="Professor">Professor</option>
+            <option value="Distinguished Professor">Distinguished Professor</option>
+            <option value="Course In-charge">Course In-charge</option>
+            <option value="Program Coordinator">Program Coordinator</option>
+            <option value="Head of Department">Head of Department</option>
+            <option value="Dean">Dean</option>
+          </select>
+
+          <label>Institutional Code (Required for Faculty)</label>
+          <div style="margin-bottom: 1rem;">
+            <p class="small" style="color: var(--text-dim); margin-bottom: 5px;">
+              Enter the teacher-only code to verify your identity.
+            </p>
+            <input type="text" id="signup-otp" placeholder="Enter Registration Code" style="width: 100%;">
+            <p id="signup-otp-msg" class="hint"></p>
+          </div>
+        </div>
+
+        <label>Email (Required for account recovery)</label>
+        <input type="email" id="signup-email" placeholder="you@university.edu" required>
+
+        <div id="student-extra">
+          <div class="two-col">
+            <div>
+              <label>Roll number</label>
+              <input type="text" id="signup-roll" placeholder="25WU0801001">
+            </div>
+            <div>
+              <label>Year / Sem</label>
+              <input type="text" id="signup-year" placeholder="1st year / Sem 1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Teacher extra removed because email is now global -->
+
+        <label>Password</label>
+        <div class="password-wrapper">
+          <input type="password" id="signup-password" required>
+          <span class="toggle-password" onclick="togglePassword('signup-password')">👁️</span>
+        </div>
+
+        <button type="submit" class="btn-primary">Create account</button>
+        <p class="hint">Please use a valid email for password recovery.</p>
+        <p id="signup-error" class="error"></p>
+      </form>
     </div>
+  </div>
 
-    <button type="submit" class="btn-primary">Create account</button>
+  <!-- Forgot Password Modal -->
+  <div class="modal hidden" id="forgot-modal">
+    <div class="modal-content auth-modal-content">
+      <h3>Reset Password</h3>
+      <div id="forgot-step-1">
+        <p>Enter your registered email address. We will send you an OTP.</p>
+        <label>Email</label>
+        <input type="email" id="forgot-email">
+        <button id="btn-send-otp" class="btn-primary">Send OTP</button>
+      </div>
 
-    <p id="signup-error" class="error"></p>
-  </form>
-</div>
+      <div id="forgot-step-2" class="hidden">
+        <p>OTP sent! Check your email (or server console) and enter it below.</p>
+        <label>OTP Code</label>
+        <input type="text" id="forgot-otp" placeholder="6-digit code">
+        <label>New Password</label>
+        <input type="password" id="forgot-new-pass">
+        <button id="btn-reset-pass" class="btn-primary">Set New Password</button>
+      </div>
+
+      <button id="btn-close-forgot" class="btn-outline-small" style="margin-top:1rem;">Cancel</button>
+      <p id="forgot-message" class="hint"></p>
+    </div>
+  </div>
+
+  <script type="module" src="analytics.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>

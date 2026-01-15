@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Testing Session | Student Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 50px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+
+        .section {
+            margin-bottom: 35px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 5px solid #667eea;
+            margin-bottom: 25px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .alert strong {
+            color: #856404;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.05rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 30px;
+            font-weight: 600;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .session-id-display {
+            background: #e7f3ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .session-id-display.active {
+            display: block;
+        }
+
+        .session-id-display h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .session-id-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .tasks-list {
+            background: #f0f9ff;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 25px;
+        }
+
+        .tasks-list h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .tasks-list ol {
+            margin-left: 25px;
+            line-height: 2;
+        }
+
+        .tasks-list li {
+            font-size: 1.05rem;
+            color: #333;
+        }
+
+        .checkbox-group {
+            margin-top: 20px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 User Testing Session</h1>
+        <p class="subtitle">Student Portal Platform - Design Thinking Evaluation</p>
+
+        <div class="alert">
+            <strong>⚠️ Important Notice:</strong>
+            This session will track your interactions with the Student Portal for research purposes. Your behavior,
+            clicks, navigation, and usage patterns will be recorded anonymously. By proceeding, you consent to this data
+            collection.
+        </div>
+
+        <div class="session-id-display" id="session-display">
+            <h3>Your Session ID:</h3>
+            <div class="session-id-value" id="session-id-value">--</div>
+            <p style="margin-top: 10px; color: #666;">Please note this ID for reference</p>
+        </div>
+
+        <form id="participant-form">
+            <div class="section">
+                <h2>📋 Participant Information</h2>
+
+                <div class="form-group">
+                    <label for="participant-id">Participant ID *</label>
+                    <input type="text" id="participant-id" name="participantId" placeholder="e.g., P001, P002..."
+                        required>
+                    <small style="color: #666;">Use P001, P002, etc. for anonymity</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="role">Testing As *</label>
+                    <select id="role" name="role" required>
+                        <option value="">-- Select Role --</option>
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="age-range">Age Range *</label>
+                    <select id="age-range" name="ageRange" required>
+                        <option value="">-- Select Age Range --</option>
+                        <option value="18-24">18-24</option>
+                        <option value="25-34">25-34</option>
+                        <option value="35-44">35-44</option>
+                        <option value="45+">45+</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tech-proficiency">Technical Proficiency *</label>
+                    <select id="tech-proficiency" name="techProficiency" required>
+                        <option value="">-- Select Level --</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="first-time">First-time User? *</label>
+                    <select id="first-time" name="firstTime" required>
+                        <option value="">-- Select --</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📖 Think-Aloud Instructions</h2>
+                <div class="instructions">
+                    <p style="margin-bottom: 15px; font-weight: 600;">Please follow these guidelines during the test:
+                    </p>
+                    <ul>
+                        <li><strong>Think Out Loud:</strong> Continuously verbalize what you're thinking, looking at,
+                            and trying to do</li>
+                        <li><strong>Share Feelings:</strong> Express if something confuses you, frustrates you, or
+                            delights you</li>
+                        <li><strong>No Wrong Answers:</strong> We're testing the portal, not you. All feedback is
+                            valuable</li>
+                        <li><strong>Ask Questions:</strong> If stuck, explain what's confusing - don't search for the
+                            "right" answer</li>
+                        <li><strong>Be Honest:</strong> Your genuine reactions help us improve the portal</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="tasks-list">
+                    <h3>📝 Tasks You'll Complete:</h3>
+                    <ol>
+                        <li>Log in to the Student Portal</li>
+                        <li>Navigate and explore the dashboard</li>
+                        <li>Find and view a specific course</li>
+                        <li>Locate an assignment and attempt to submit it (or create if teacher)</li>
+                        <li>Check the discussion board messages</li>
+                        <li>Update your profile information</li>
+                    </ol>
+                    <p style="margin-top: 15px; color: #666; font-style: italic;">
+                        Remember: Think aloud throughout all tasks!
+                    </p>
+                </div>
+            </div>
+
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="consent" name="consent" required>
+                    <span>I understand this session will be tracked for research purposes and I consent to
+                        participate</span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-start">🚀 Start Testing Session</button>
+        </form>
+    </div>
+
+    <script>
+        // Clear previous session data when page loads to ensure a clean slate for new participant
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('participant_info')) {
+                console.log('Clearing previous participant session data...');
+                sessionStorage.removeItem('participant_info');
+                sessionStorage.removeItem('analytics_session_id');
+                sessionStorage.removeItem('analytics_session_start');
+                sessionStorage.removeItem('analytics_session_started');
+            }
+        });
+
+        document.getElementById('participant-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Generate session ID
+            const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            // Store participant info in sessionStorage
+            const participantData = {
+                participantId: document.getElementById('participant-id').value,
+                role: document.getElementById('role').value,
+                ageRange: document.getElementById('age-range').value,
+                techProficiency: document.getElementById('tech-proficiency').value,
+                firstTime: document.getElementById('first-time').value,
+                sessionId: sessionId,
+                startTime: new Date().toISOString()
+            };
+
+            sessionStorage.setItem('participant_info', JSON.stringify(participantData));
+            sessionStorage.setItem('analytics_session_id', sessionId);
+            sessionStorage.setItem('analytics_session_start', Date.now());
+
+            // Show session ID
+            document.getElementById('session-id-value').textContent = sessionId;
+            document.getElementById('session-display').classList.add('active');
+
+            // Wait 2 seconds then redirect
+            setTimeout(() => {
+                window.location.href = 'index.html'; // Redirect to login page
+            }, 2000);
+        });
+    </script>
+    <script type="module" src="analytics.js"></script>
+</body>
+
+</html>
