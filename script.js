@@ -379,6 +379,8 @@ function initDashboardPage() {
       if (view === "assignments") loadAssignments();
       if (view === "messages") initMessagesView();
       if (view === "datesheets") initDateSheetView();
+      if (view === "schedule") initScheduleView();
+      if (view === "broadcast") initBroadcastPortal();
       if (view === "profile") loadProfile();
       if (view === "materials") initMaterialsView();
       if (view === "overview") loadDashboardSummary();
@@ -397,6 +399,8 @@ function initDashboardPage() {
   safeLoad(loadProfile, "Profile");
   safeLoad(initDateSheetView, "Date Sheet");
   safeLoad(initMaterialsView, "Study Materials");
+  safeLoad(initScheduleView, "Class Schedule");
+  safeLoad(initBroadcastPortal, "Broadcasts");
 
   initCoursesSection(user);
   initAssignmentsSection(user);
@@ -2230,4 +2234,170 @@ function openModal(title, buildFn) {
       }
     }
   };
+}
+
+let classCalendar = null;
+let broadcastInterval = null;
+
+async function initScheduleView() {
+  const container = document.getElementById("class-calendar");
+  const user = getUser();
+  const addBtn = document.getElementById("btn-add-schedule");
+
+  if (!container) return;
+
+  // Role check for Add Event button
+  if (["hod", "coordinator", "admin"].includes(user.role)) {
+    if (addBtn) {
+      addBtn.style.display = "inline-block";
+      addBtn.onclick = () => {
+        openModal("Add Class/Holiday", (body, close) => {
+          body.innerHTML = `
+            <label>Title</label>
+            <input type="text" id="sch-title" placeholder="e.g. Maths Lecture or Diwali">
+            <label>Type</label>
+            <select id="sch-type">
+              <option value="class">Class</option>
+              <option value="holiday">Holiday</option>
+            </select>
+            <label>Start</label>
+            <input type="datetime-local" id="sch-start">
+            <label>End</label>
+            <input type="datetime-local" id="sch-end">
+            <label>Target Program</label>
+            <select id="sch-program">
+              <option value="B.Tech">B.Tech</option>
+              <option value="BBA">BBA</option>
+            </select>
+            <label>Semester</label>
+            <input type="number" id="sch-sem" value="1" min="1" max="8">
+          `;
+          return async () => {
+            const payload = {
+              title: document.getElementById("sch-title").value,
+              type: document.getElementById("sch-type").value,
+              start: document.getElementById("sch-start").value,
+              end: document.getElementById("sch-end").value,
+              program: document.getElementById("sch-program").value,
+              semester: document.getElementById("sch-sem").value
+            };
+            if (!payload.title || !payload.start) return alert("Title and Start date required");
+            await api("/api/schedule", { method: "POST", body: JSON.stringify(payload) });
+            close();
+            if (classCalendar) classCalendar.refetchEvents();
+            loadHolidays();
+          };
+        });
+      };
+    }
+  } else {
+    if (addBtn) addBtn.style.display = "none";
+  }
+
+  if (typeof FullCalendar === 'undefined') {
+    container.innerHTML = "<p class='error'>Calendar library failed.</p>";
+    return;
+  }
+
+  if (classCalendar) classCalendar.destroy();
+
+  classCalendar = new FullCalendar.Calendar(container, {
+    initialView: 'timeGridWeek',
+    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+    events: async (info, success, failure) => {
+      try {
+        const data = await api("/api/schedule");
+        const events = data.map(ev => ({
+          title: ev.title,
+          start: ev.start,
+          end: ev.end,
+          backgroundColor: ev.type === 'holiday' ? '#f43f5e' : '#38bdf8',
+          borderColor: ev.type === 'holiday' ? '#f43f5e' : '#38bdf8',
+          extendedProps: { ...ev }
+        }));
+        success(events);
+      } catch (e) { failure(e); }
+    }
+  });
+  classCalendar.render();
+  loadHolidays();
+}
+
+async function loadHolidays() {
+  const list = document.getElementById("holiday-list");
+  if (!list) return;
+  try {
+    const data = await api("/api/schedule");
+    const holidays = data.filter(ev => ev.type === 'holiday').sort((a, b) => new Date(a.start) - new Date(b.start));
+    list.innerHTML = holidays.length ? "" : "<p class='hint'>No upcoming holidays</p>";
+    holidays.forEach(h => {
+      const div = document.createElement("div");
+      div.style.marginBottom = "10px";
+      div.innerHTML = `
+        <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px; margin-bottom:5px;">
+          <strong style="color:var(--accent-pink)">${h.title}</strong><br>
+          <small>${new Date(h.start).toLocaleDateString()}</small>
+        </div>`;
+      list.appendChild(div);
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function initBroadcastPortal() {
+  const user = getUser();
+  const msgContainer = document.getElementById("broadcast-messages");
+  const inputArea = document.getElementById("broadcast-input-area");
+
+  if (!msgContainer) return;
+
+  // Permissions: Only HOD/PD/Admin can see input
+  if (["hod", "pd", "admin"].includes(user.role)) {
+    if (inputArea) {
+      inputArea.classList.remove("hidden");
+      const sendBtn = document.getElementById("btn-send-broadcast");
+      const input = document.getElementById("broadcast-input");
+
+      if (sendBtn) {
+        sendBtn.onclick = async () => {
+          const content = input.value.trim();
+          if (!content) return;
+          try {
+            await api("/api/broadcasts", {
+              method: "POST",
+              body: JSON.stringify({
+                content,
+                program: user.program,
+                department: user.department
+              })
+            });
+            input.value = "";
+            fetchBroadcasts();
+          } catch (e) { alert(e.message); }
+        };
+      }
+    }
+  } else {
+    if (inputArea) inputArea.classList.add("hidden");
+  }
+
+  async function fetchBroadcasts() {
+    try {
+      const data = await api("/api/broadcasts");
+      msgContainer.innerHTML = "";
+      data.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "message" + (m.senderId === user.id ? " own" : "");
+        div.innerHTML = `
+          <div class="meta">${m.senderName} (${m.senderRole.toUpperCase()}) - ${new Date(m.createdAt).toLocaleString()}</div>
+          <div class="text" style="background: rgba(255,255,255,0.05); border-left: 3px solid #ff00ff;">${m.content}</div>
+        `;
+        msgContainer.appendChild(div);
+      });
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    } catch (e) { console.error(e); }
+  }
+
+  fetchBroadcasts();
+  if (broadcastInterval) clearInterval(broadcastInterval);
+  broadcastInterval = setInterval(fetchBroadcasts, 10000);
 }
