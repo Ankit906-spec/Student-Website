@@ -607,6 +607,31 @@ app.post("/api/auth/send-otp", async (req, res) => {
   }
 });
 
+// --- DEBUG ENDPOINT (Remove after fixing) ---
+app.get("/api/auth/check-user", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.json({ message: "Please provide ?email=..." });
+
+    // Check 1: Exact Match
+    const exact = await User.findOne({ email: email });
+    // Check 2: Lowercase Match
+    const lower = await User.findOne({ email: email.toLowerCase() });
+    // Check 3: Regex Match
+    const regex = await User.findOne({ email: { $regex: new RegExp(`^${email.trim()}$`, "i") } });
+
+    res.json({
+      query: email,
+      foundExact: !!exact,
+      foundLower: !!lower,
+      foundRegex: !!regex,
+      storedEmail: regex ? regex.email : (lower ? lower.email : (exact ? exact.email : "NOT FOUND"))
+    });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
 // Verify OTP & Reset Password
 app.post("/api/auth/reset-password-otp", async (req, res) => {
   try {
