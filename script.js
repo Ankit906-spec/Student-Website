@@ -72,6 +72,10 @@ async function api(path, options = {}) {
 
 // Simple routing: check which page we are on
 document.addEventListener("DOMContentLoaded", () => {
+  // --- PRE-WARMING: Ping backend immediately ---
+  // This wakes up Render free tier while user types credentials
+  fetch(API_BASE + "/health").then(() => console.log("🔥 Backend pre-warmed")).catch(console.error);
+
   if (document.getElementById("login-form")) {
     initAuthPage();
   }
@@ -177,14 +181,34 @@ function initAuthPage() {
     const password = document.getElementById("login-password").value;
 
     try {
+      const submitBtn = loginForm.querySelector("button[type='submit']");
+      const originalText = submitBtn.innerText;
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Connecting...";
+
+      // Slow connection notification
+      const slowTimer = setTimeout(() => {
+        loginError.textContent = "⚙️ Server is waking up (Render Free Tier)... This may take up to 60s.";
+        loginError.style.color = "orange";
+      }, 3000);
+
       const data = await api("/api/login", {
         method: "POST",
         body: JSON.stringify({ role, identifier, password })
       });
+
+      clearTimeout(slowTimer);
       saveSession(data.token, data.user);
       window.location.href = "dashboard.html";
     } catch (err) {
       loginError.textContent = err.message;
+      loginError.style.color = "var(--error)"; // Reset color on error
+    } finally {
+      const submitBtn = loginForm.querySelector("button[type='submit']");
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Login";
+      }
     }
   });
 
@@ -220,15 +244,32 @@ function initAuthPage() {
       payload.otp = document.getElementById("signup-otp").value.trim();
     }
 
+    const submitBtn = signupForm.querySelector("button[type='submit']");
+    const originalText = submitBtn.innerText;
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Creating Account...";
+
+    // Slow connection notification
+    const slowTimer = setTimeout(() => {
+      signupError.textContent = "Being patient... Server is starting up.";
+      signupError.style.color = "orange";
+    }, 3000);
+
     try {
       const data = await api("/api/signup", {
         method: "POST",
         body: JSON.stringify(payload)
       });
+      clearTimeout(slowTimer);
       saveSession(data.token, data.user);
       window.location.href = "dashboard.html";
     } catch (err) {
+      clearTimeout(slowTimer);
       signupError.textContent = err.message;
+      signupError.style.color = "var(--error)";
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
     }
   });
 

@@ -506,6 +506,7 @@ select:focus {
   padding: 24px;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   /* Scroll strictly inside content area */
 }
 

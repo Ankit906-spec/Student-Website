@@ -33,7 +33,7 @@
       <button class="nav-btn" data-view="profile">Profile</button>
       <button class="nav-btn" data-view="datesheets">Exam Date Sheet</button>
       <button class="nav-btn" data-view="schedule">Class Schedule</button>
-      <button class="nav-btn" data-view="broadcast">Leadership Broadcast</button>
+      <button class="nav-btn" data-view="broadcast">HOD and PD messages</button>
     </aside>
 
     <section class="content">
@@ -203,50 +203,57 @@
         <div class="watermark-bg">STUDY MATERIAL</div>
         <div class="view-header">
           <h3>Study Materials</h3>
-
-          <div class="assignments-container">
-            <div id="materials-list" class="grid"></div>
-            <div class="subjects-sidebar">
-              <h4>Select Subject</h4>
-              <div id="materials-courses-sidebar"></div>
-            </div>
-          </div>
-        </div>
-        <!-- Class Schedule -->
-        <div class="view" id="view-schedule">
-          <div class="view-header">
-            <h3>Class Schedule</h3>
-            <div class="view-actions">
-              <button id="btn-add-schedule" class="btn-primary-small admin-faculty-only">+ Add Event</button>
-            </div>
-          </div>
-          <div class="schedule-container" style="display: flex; gap: 20px;">
-            <div id="class-calendar" style="flex: 3; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
-            </div>
-            <div class="holiday-box"
-              style="flex: 1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border-left: 3px solid var(--accent-pink);">
-              <h4>Holidays</h4>
-              <div id="holiday-list" style="margin-top: 10px;"></div>
-            </div>
+          <div class="view-actions">
+            <button id="btn-upload-material" class="btn-primary-small teacher-only">+ Upload Material</button>
           </div>
         </div>
 
-        <!-- Leadership Broadcast -->
-        <div class="view" id="view-broadcast">
-          <div class="view-header">
-            <h3>Leadership Broadcast</h3>
-            <p class="hint">Important announcements from HOD and Program Directors</p>
+        <div class="assignments-container">
+          <div id="materials-list" class="grid"></div>
+          <div class="subjects-sidebar">
+            <h4>Select Subject</h4>
+            <div id="materials-courses-sidebar"></div>
           </div>
-          <div class="chat-container broadcast-chat">
-            <div class="chat-main" style="width: 100%;">
-              <div id="broadcast-messages" class="messages" style="height: 500px;"></div>
-              <div id="broadcast-input-area" class="message-form hidden">
-                <input type="text" id="broadcast-input" placeholder="Type an announcement...">
-                <button id="btn-send-broadcast" class="btn-primary-small">Broadcast</button>
-              </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Class Schedule -->
+      <div class="view" id="view-schedule">
+        <div class="view-header">
+          <h3>Class Schedule</h3>
+          <div class="view-actions">
+            <button id="btn-add-schedule" class="btn-primary-small admin-faculty-only">+ Add Event</button>
+          </div>
+        </div>
+        <div class="schedule-container" style="display: flex; gap: 20px;">
+          <div id="class-calendar"
+            style="flex: 3; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-height: 600px;">
+          </div>
+          <div class="holiday-box"
+            style="flex: 1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border-left: 3px solid var(--accent-pink);">
+            <h4>Holidays</h4>
+            <div id="holiday-list" style="margin-top: 10px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HOD and PD messages -->
+      <div class="view" id="view-broadcast">
+        <div class="view-header">
+          <h3>HOD and PD messages</h3>
+          <p class="hint">Important announcements from HOD and Program Directors</p>
+        </div>
+        <div class="chat-container broadcast-chat">
+          <div class="chat-main" style="width: 100%;">
+            <div id="broadcast-messages" class="messages" style="height: 500px;"></div>
+            <div id="broadcast-input-area" class="message-form hidden">
+              <input type="text" id="broadcast-input" placeholder="Type an announcement...">
+              <button id="btn-send-broadcast" class="btn-primary-small">Broadcast</button>
             </div>
           </div>
         </div>
+      </div>
 
     </section>
   </main>

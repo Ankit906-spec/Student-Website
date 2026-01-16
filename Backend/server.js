@@ -15,15 +15,17 @@ import nodemailer from "nodemailer"; // Ensure this is installed or use dynamic 
 
 dotenv.config();
 
-// --- Email Config (Brevo SMTP) ---
+// --- Email Config (Dynamic SMTP) ---
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+const SMTP_PORT = process.env.SMTP_PORT || 587;
 const ADMIN_EMAIL = "ankityadav94698@gmail.com";
 
 const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false, // Use STARTTLS on port 587
+  host: SMTP_HOST,
+  port: parseInt(SMTP_PORT),
+  secure: parseInt(SMTP_PORT) === 465, // True for 465, false for 587
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS

@@ -72,6 +72,10 @@ async function api(path, options = {}) {
 
 // Simple routing: check which page we are on
 document.addEventListener("DOMContentLoaded", () => {
+  // --- PRE-WARMING: Ping backend immediately ---
+  // This wakes up Render free tier while user types credentials
+  fetch(API_BASE + "/health").then(() => console.log("🔥 Backend pre-warmed")).catch(console.error);
+
   if (document.getElementById("login-form")) {
     initAuthPage();
   }
@@ -177,14 +181,35 @@ function initAuthPage() {
     const password = document.getElementById("login-password").value;
 
     try {
+      const submitBtn = loginForm.querySelector("button[type='submit']");
+      const originalText = submitBtn.innerText;
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Connecting...";
+
+      // Slow connection notification
+      const slowTimer = setTimeout(() => {
+        loginError.textContent = "⚙️ Server is waking up (Render Free Tier)... This may take up to 60s.";
+        loginError.style.color = "orange";
+      }, 3000);
+
       const data = await api("/api/login", {
         method: "POST",
         body: JSON.stringify({ role, identifier, password })
       });
+
+      clearTimeout(slowTimer);
       saveSession(data.token, data.user);
       window.location.href = "dashboard.html";
     } catch (err) {
+      if (typeof slowTimer !== 'undefined') clearTimeout(slowTimer);
       loginError.textContent = err.message;
+      loginError.style.color = "var(--error)"; // Reset color on error
+    } finally {
+      const submitBtn = loginForm.querySelector("button[type='submit']");
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Login";
+      }
     }
   });
 
@@ -220,15 +245,32 @@ function initAuthPage() {
       payload.otp = document.getElementById("signup-otp").value.trim();
     }
 
+    const submitBtn = signupForm.querySelector("button[type='submit']");
+    const originalText = submitBtn.innerText;
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Creating Account...";
+
+    // Slow connection notification
+    const slowTimer = setTimeout(() => {
+      signupError.textContent = "Being patient... Server is starting up.";
+      signupError.style.color = "orange";
+    }, 3000);
+
     try {
       const data = await api("/api/signup", {
         method: "POST",
         body: JSON.stringify(payload)
       });
+      clearTimeout(slowTimer);
       saveSession(data.token, data.user);
       window.location.href = "dashboard.html";
     } catch (err) {
+      clearTimeout(slowTimer);
       signupError.textContent = err.message;
+      signupError.style.color = "var(--error)";
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
     }
   });
 
@@ -339,7 +381,9 @@ function initDashboardPage() {
     document.querySelectorAll(".teacher-only").forEach((el) => el.style.display = "none");
     document.getElementById("teacher-only-submissions").style.display = "none";
   } else {
-    document.getElementById("student-only-pending").style.display = "none";
+    // Check if element exists before hiding
+    const pendingEl = document.getElementById("student-only-completed");
+    if (pendingEl) pendingEl.style.display = "none";
   }
 
   logoutBtn.addEventListener("click", () => {
@@ -480,6 +524,13 @@ async function loadDashboardSummary() {
       } else {
         document.getElementById("stat-to-grade").style.color = "lightgreen";
       }
+
+      // Make clickable
+      document.getElementById("teacher-only-submissions").style.cursor = "pointer";
+      document.getElementById("teacher-only-submissions").onclick = () => {
+        const navBtn = document.querySelector(`.nav-btn[data-view="assignments"]`);
+        if (navBtn) navBtn.click();
+      };
 
       // Add Subject Boards button for teachers
       const overviewExtra = document.getElementById("overview-extra");
@@ -870,42 +921,54 @@ function renderAssignments() {
   const mainWrapper = document.createElement("div");
   mainWrapper.style.width = "100%";
 
-  // Pending Box
-  const pendingBox = document.createElement("div");
-  pendingBox.className = "assignment-section-box";
-  pendingBox.innerHTML = `<h3 style="font-size: 1.5rem; color: orange; margin-bottom: 1rem;">Pending Assignments</h3>`;
-  const pendingGrid = document.createElement("div");
-  pendingGrid.className = "grid";
-
-  if (pendingList.length === 0) {
-    pendingGrid.innerHTML = "<p class='hint' style='font-size: 1.1rem; padding: 1rem;'>Excellent! No pending assignments.</p>";
-  } else {
-    pendingList.forEach(a => {
+  if (user.role === "teacher") {
+    // TEACHER VIEW: Simple list
+    const teacherGrid = document.createElement("div");
+    teacherGrid.className = "grid";
+    cachedAssignments.forEach(a => {
       const card = createAssignmentCard(a, user, false);
-      pendingGrid.appendChild(card);
+      teacherGrid.appendChild(card);
     });
-  }
-  pendingBox.appendChild(pendingGrid);
-  mainWrapper.appendChild(pendingBox);
-
-  // Submitted Box
-  const submittedBox = document.createElement("div");
-  submittedBox.className = "assignment-section-box";
-  submittedBox.style.marginTop = "2rem";
-  submittedBox.innerHTML = `<h3 style="font-size: 1.5rem; color: #22c55e; margin-bottom: 1rem;">Submitted Assignments</h3>`;
-  const submittedGrid = document.createElement("div");
-  submittedGrid.className = "grid";
-
-  if (submittedList.length === 0) {
-    submittedGrid.innerHTML = "<p class='hint' style='font-size: 1.1rem; padding: 1rem;'>You haven't submitted any assignments yet.</p>";
+    mainWrapper.appendChild(teacherGrid);
   } else {
-    submittedList.forEach(a => {
-      const card = createAssignmentCard(a, user, true);
-      submittedGrid.appendChild(card);
-    });
+    // STUDENT VIEW: Pending vs Submitted
+    // Pending Box
+    const pendingBox = document.createElement("div");
+    pendingBox.className = "assignment-section-box";
+    pendingBox.innerHTML = `<h3 style="font-size: 1.5rem; color: orange; margin-bottom: 1rem;">Pending Assignments</h3>`;
+    const pendingGrid = document.createElement("div");
+    pendingGrid.className = "grid";
+
+    if (pendingList.length === 0) {
+      pendingGrid.innerHTML = "<p class='hint' style='font-size: 1.1rem; padding: 1rem;'>Excellent! No pending assignments.</p>";
+    } else {
+      pendingList.forEach(a => {
+        const card = createAssignmentCard(a, user, false);
+        pendingGrid.appendChild(card);
+      });
+    }
+    pendingBox.appendChild(pendingGrid);
+    mainWrapper.appendChild(pendingBox);
+
+    // Submitted Box
+    const submittedBox = document.createElement("div");
+    submittedBox.className = "assignment-section-box";
+    submittedBox.style.marginTop = "2rem";
+    submittedBox.innerHTML = `<h3 style="font-size: 1.5rem; color: #22c55e; margin-bottom: 1rem;">Submitted Assignments</h3>`;
+    const submittedGrid = document.createElement("div");
+    submittedGrid.className = "grid";
+
+    if (submittedList.length === 0) {
+      submittedGrid.innerHTML = "<p class='hint' style='font-size: 1.1rem; padding: 1rem;'>You haven't submitted any assignments yet.</p>";
+    } else {
+      submittedList.forEach(a => {
+        const card = createAssignmentCard(a, user, true);
+        submittedGrid.appendChild(card);
+      });
+    }
+    submittedBox.appendChild(submittedGrid);
+    mainWrapper.appendChild(submittedBox);
   }
-  submittedBox.appendChild(submittedGrid);
-  mainWrapper.appendChild(submittedBox);
 
   container.appendChild(mainWrapper);
 }
@@ -1636,19 +1699,20 @@ async function initMaterialsView() {
           <div style="margin-bottom:1rem;">
             <label>Type</label>
             <select id="material-type">
-              <option value="file">File (PDF, PPT, Word)</option>
-              <option value="video">Video URL (YouTube, etc.)</option>
+              <option value="file">File (PDF, Word, Excel, PPT, Images)</option>
+              <option value="video">Video Link (YouTube, Vimeo, etc.)</option>
             </select>
           </div>
           <div id="file-input-group">
             <label>Select file(s)</label>
-            <input type="file" id="materialFiles" multiple>
+            <input type="file" id="materialFiles" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png">
+            <p class="hint">Supported: PDF, Word, Excel, PPT, Images</p>
           </div>
           <div id="video-input-group" class="hidden">
             <label>Video Title</label>
-            <input type="text" id="video-title" placeholder="Introduction to AI">
-            <label>URL</label>
-            <input type="text" id="video-url" placeholder="https://...">
+            <input type="text" id="video-title" placeholder="e.g. Introduction to AI">
+            <label>Video URL</label>
+            <input type="text" id="video-url" placeholder="https://youtube.com/...">
           </div>
         `;
 
@@ -2247,7 +2311,7 @@ async function initScheduleView() {
   if (!container) return;
 
   // Role check for Add Event button
-  if (["hod", "coordinator", "admin"].includes(user.role)) {
+  if (["teacher", "hod", "coordinator", "admin"].includes(user.role)) {
     if (addBtn) {
       addBtn.style.display = "inline-block";
       addBtn.onclick = () => {
@@ -2307,6 +2371,23 @@ async function initScheduleView() {
     events: async (info, success, failure) => {
       try {
         const data = await api("/api/schedule");
+
+        // Empty State Handler
+        const container = document.getElementById("class-calendar");
+        if (data.length === 0) {
+          const info = document.createElement("div");
+          info.innerHTML = "<strong>Nothing uploaded yet properly</strong>";
+          info.style.position = "absolute";
+          info.style.top = "50%";
+          info.style.left = "50%";
+          info.style.transform = "translate(-50%, -50%)";
+          info.style.fontSize = "1.5rem";
+          info.style.color = "rgba(255,255,255,0.5)";
+          info.style.zIndex = "10";
+          info.style.fontWeight = "bold";
+          container.appendChild(info);
+        }
+
         const events = data.map(ev => ({
           title: ev.title,
           start: ev.start,
@@ -2384,16 +2465,21 @@ async function initBroadcastPortal() {
     try {
       const data = await api("/api/broadcasts");
       msgContainer.innerHTML = "";
-      data.forEach(m => {
-        const div = document.createElement("div");
-        div.className = "message" + (m.senderId === user.id ? " own" : "");
-        div.innerHTML = `
-          <div class="meta">${m.senderName} (${m.senderRole.toUpperCase()}) - ${new Date(m.createdAt).toLocaleString()}</div>
-          <div class="text" style="background: rgba(255,255,255,0.05); border-left: 3px solid #ff00ff;">${m.content}</div>
-        `;
-        msgContainer.appendChild(div);
-      });
-      msgContainer.scrollTop = msgContainer.scrollHeight;
+
+      if (data.length === 0) {
+        msgContainer.innerHTML = "<p class='hint' style='text-align:center; padding:20px;'>No messages...</p>";
+      } else {
+        data.forEach(m => {
+          const div = document.createElement("div");
+          div.className = "message" + (m.senderId === user.id ? " own" : "");
+          div.innerHTML = `
+            <div class="meta">${m.senderName} (${m.senderRole.toUpperCase()}) - ${new Date(m.createdAt).toLocaleString()}</div>
+            <div class="text" style="background: rgba(255,255,255,0.05); border-left: 3px solid #ff00ff;">${m.content}</div>
+          `;
+          msgContainer.appendChild(div);
+        });
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+      }
     } catch (e) { console.error(e); }
   }
 
