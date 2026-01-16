@@ -508,7 +508,7 @@ app.post("/api/signup", async (req, res) => {
       }
     }
 
-    const existingEmail = await User.findOne({ email: email.toLowerCase() });
+    const existingEmail = await User.findOne({ email: { $regex: new RegExp(`^${email.trim()}$`, "i") } });
     if (existingEmail) {
       return res.status(400).json({ message: "Email already registered" });
     }
@@ -578,7 +578,8 @@ app.post("/api/auth/send-otp", async (req, res) => {
 
     // If it's a password reset, verify the user exists first
     if (type === "reset") {
-      const user = await User.findOne({ email: normalizedEmail });
+      // Use regex for case-insensitive match (handles Stenzin vs stenzin)
+      const user = await User.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") } });
       if (!user) {
         return res.status(404).json({ message: "No account found with this email address." });
       }
