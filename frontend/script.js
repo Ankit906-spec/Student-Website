@@ -1,5 +1,5 @@
-const API_BASE = "https://woxsen-app-student-backend.onrender.com";
-// const API_BASE = "http://localhost:4000";
+const API_BASE = "https://student-website-1-mx8v.onrender.com";
+// const API_BASE = "https://woxsen-app-student-backend.onrender.com";
 let messageInterval = null;
 
 const BRANCH_DATA = {
